@@ -7,6 +7,7 @@ import android.widget.Button
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.example.graduate_project.add_data
 
 
 class MainActivity : AppCompatActivity() {
@@ -22,6 +23,8 @@ class MainActivity : AppCompatActivity() {
         user_password = findViewById<View>(R.id.et3) as EditText
         val submit =
             findViewById<View>(R.id.button) as Button
+
+        add_data()
         // 按下按鈕 觸發事件
         submit.setOnClickListener {
             if ("123" == user_account!!.text.toString() && "321" == user_password!!.text.toString()) {
