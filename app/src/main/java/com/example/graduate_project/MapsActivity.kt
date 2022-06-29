@@ -58,47 +58,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         mMap.uiSettings.isZoomControlsEnabled = true
         mMap.setOnMarkerClickListener(this)
         setUpMap()
-
-        /*       val data = arrayOf(
-                   arrayOf("24.9660","121.1960","IKEA"),
-                   arrayOf("24.9700","121.1940","星巴克")
-               )
-
-               //利用陣列來加小紅點。
-               for (i in data.indices) {
-                   var dbelat = 0.0
-                   var dbelng = 0.0
-                   try {
-                       dbelat = data[i][0]!!.trim().toDouble()
-                       dbelng = data[i][1]!!.trim().toDouble()
-
-                       //宣告MarkerOptions
-                       val objoption = LatLng(dbelat, dbelng)
-
-                       //加入Google Map，並且設定標題
-                       mMap.addMarker(MarkerOptions().position(objoption).title(data[i][2]))
-                   } catch (e: NullPointerException) {
-                   }
-               }
-
-               //宣告MarkerOptions
-               val objstartpoint = LatLng(24.9683, 121.1953)
-
-               //加入Google Map，並且設定標題
-               mMap.addMarker(MarkerOptions().position(objstartpoint).title("中央大學"))
-
-               //設定 左上角的指南針，要兩指旋轉才會出現
-               mMap.uiSettings.isCompassEnabled = true
-
-               //設定 右下角的導覽及開啟 Google Map功能
-               mMap.uiSettings.isMapToolbarEnabled = true
-
-               //移動地圖到那個座標
-               mMap.moveCamera(CameraUpdateFactory.newLatLng(objstartpoint))
-
-               //放大地圖到15倍
-               mMap.animateCamera(CameraUpdateFactory.zoomTo(15f))
-               */
     }
 
     private fun setUpMap() {
@@ -127,3 +86,44 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     override fun onMarkerClick(p0: Marker?) = false
 }
+
+/*       val data = arrayOf(
+           arrayOf("24.9660","121.1960","IKEA"),
+           arrayOf("24.9700","121.1940","星巴克")
+       )
+
+       //利用陣列來加小紅點。
+       for (i in data.indices) {
+           var dbelat = 0.0
+           var dbelng = 0.0
+           try {
+               dbelat = data[i][0]!!.trim().toDouble()
+               dbelng = data[i][1]!!.trim().toDouble()
+
+               //宣告MarkerOptions
+               val objoption = LatLng(dbelat, dbelng)
+
+               //加入Google Map，並且設定標題
+               mMap.addMarker(MarkerOptions().position(objoption).title(data[i][2]))
+           } catch (e: NullPointerException) {
+           }
+       }
+
+       //宣告MarkerOptions
+       val objstartpoint = LatLng(24.9683, 121.1953)
+
+       //加入Google Map，並且設定標題
+       mMap.addMarker(MarkerOptions().position(objstartpoint).title("中央大學"))
+
+       //設定 左上角的指南針，要兩指旋轉才會出現
+       mMap.uiSettings.isCompassEnabled = true
+
+       //設定 右下角的導覽及開啟 Google Map功能
+       mMap.uiSettings.isMapToolbarEnabled = true
+
+       //移動地圖到那個座標
+       mMap.moveCamera(CameraUpdateFactory.newLatLng(objstartpoint))
+
+       //放大地圖到15倍
+       mMap.animateCamera(CameraUpdateFactory.zoomTo(15f))
+       */
