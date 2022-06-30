@@ -7,8 +7,6 @@ import android.widget.Button
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.example.graduate_project.add_data
-
 
 class MainActivity : AppCompatActivity() {
     private var user_account
@@ -23,13 +21,13 @@ class MainActivity : AppCompatActivity() {
         user_password = findViewById<View>(R.id.et3) as EditText
         val submit =
             findViewById<View>(R.id.button) as Button
-
-        add_data()
         // 按下按鈕 觸發事件
         submit.setOnClickListener {
-            if ("123" == user_account!!.text.toString() && "321" == user_password!!.text.toString()) {
-                val intent = Intent(this, MapsActivity::class.java)
-                startActivity(intent)
+            var success=police_login(user_account!!.text.toString(),user_password!!.text.toString())
+            if (success) {
+                //val intent = Intent(this, MapsActivity::class.java)
+                //startActivity(intent)
+                success_dialog()
             }
             else{
                 getDialog()
@@ -45,4 +43,11 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    fun success_dialog(){
+        AlertDialog.Builder(this)
+            .setTitle("正確訊息")
+            .setMessage("登入成功")
+            .setCancelable(true)
+            .show()
+    }
 }
