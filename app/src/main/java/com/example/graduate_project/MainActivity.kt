@@ -28,8 +28,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-//        val intent = Intent(this, MapsActivity::class.java)
-//        startActivity(intent)
+
+        /** 略過登入，直接跳轉到地圖*/
+        val intent = Intent(this, MapsActivity::class.java)
+        startActivity(intent)
+
         var user_account: TextView = findViewById(R.id.et2) as TextView
         var user_password: TextView = findViewById(R.id.et3) as TextView
         val submit =
