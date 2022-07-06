@@ -24,6 +24,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.example.graduate_project.databinding.ActivityMapsBinding
@@ -37,6 +38,7 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.firebase.firestore.*
 import com.google.firebase.firestore.ktx.toObject
+import java.util.Date
 import java.sql.Timestamp
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
@@ -59,7 +61,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     data class Car(
         val carId: String? = null,
         val gpsLocation: GeoPoint? = null,
-        val uploadTime: Timestamp? = null
+        val uploadTime: Date? = null  //資料庫接收的資料似乎是data 所以我把timestamp改成date
     )
 
 
@@ -130,14 +132,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     val location = locationResult.lastLocation
                     val db = FirebaseFirestore.getInstance()
                     val docRef = db.collection("carLocation").document("CarLoc")
+                    docRef.get(Source.SERVER).addOnSuccessListener { documentSnapshot ->
+                        if (documentSnapshot.exists()) {
+                            var car = documentSnapshot.toObject(Car::class.java)!!
+                            Log.d(TAG, "DocumentSnapshot data: ${documentSnapshot.data}")
+                            Log.d(TAG, "car id: ${car.carId}")
+                        }else{
+                            Toast.makeText(this@MapsActivity, "Error!", Toast.LENGTH_SHORT).show()
+                        }
 //                    docRef.get(Source.SERVER).addOnSuccessListener { task ->
-//                        if (task != null) {
-                    docRef.get().addOnCompleteListener { documentSnapshot ->
+//                        if (task != null) {addOnCompleteListener
+                    /*docRef.get().addOnCompleteListener { documentSnapshot ->
                         if (documentSnapshot.isSuccessful){
 
                             /** 下面註解掉的這行會報錯，不知道怎麼解決，
                              * 我想把資料轉成Car型態，取裡面的經緯度 */
-//                            val car = documentSnapshot.toObject(Car::class.java)
+                           var car = documentSnapshot.toObject(Car::class.java)
                             Log.d(TAG, "DocumentSnapshot data: ${documentSnapshot.getResult().data}")
 
 /**                         資料取下來的樣子
@@ -147,7 +157,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
                         } else {
                             Log.d(TAG, "Cached get failed: ", documentSnapshot.exception)
-                        }
+                        }*/
                     }.addOnFailureListener { exception ->
                             Log.d(TAG, "get failed with ", exception)
                         }
