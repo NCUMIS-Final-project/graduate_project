@@ -51,6 +51,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRequest: LocationRequest
     private var locationUpdateState = false
+    private var db = FirebaseFirestore.getInstance()
 
     companion object{
         private const val LOCATION_REQUEST_CODE = 1
@@ -58,15 +59,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         private const val REQUEST_CHECK_SETTINGS = 2
     }
 
-//    data class Car(
-//        val carId: String? = null,
-//        val gpsLocation: GeoPoint? = null,
-//        val uploadTime: Date? = null  //資料庫接收的資料似乎是data 所以我把timestamp改成date
-//    )
     data class Car(
         @get: PropertyName("carId") @set: PropertyName("carId") var carId: String? = "",
-        @get: PropertyName("gpsLocation") @set: PropertyName("gpsLocation") var gpsLocation: GeoPoint? = GeoPoint(0.0,0.0)
-    //        @get: PropertyName("uploadTime") @set: PropertyName("uploadTime") var uploadTime: Timestamp?= null
+        @get: PropertyName("gpsLocation") @set: PropertyName("gpsLocation") var gpsLocation: GeoPoint? = GeoPoint(0.0,0.0),
+        @get: PropertyName("uploadTime") @set: PropertyName("uploadTime") var uploadTime: Date?= null
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -99,15 +95,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
         // 有定位權限
         mMap.isMyLocationEnabled = true
-        fusedLocationClient.lastLocation.addOnSuccessListener(this) { location ->
+        fusedLocationClient.lastLocation.addOnSuccessListener(this) {location ->
             if (location != null) {
                 lastLocation = location
-//                val currentLatLng = LatLng(location.latitude, location.longitude)
-//                placeMarkerOnMap(currentLatLng)
+                val currentLatLng = GeoPoint(location.latitude, location.longitude)
+                val returnLocation = Car("yourPosition", currentLatLng, null)
+                db.collection("carLocation").document("yourPosition").set(returnLocation, SetOptions.merge())
             }
-            getLocationUpdates()
-            startLocationUpdates()
         }
+        getLocationUpdates()
+        startLocationUpdates()
+
     }
 
     // 放置 marker
@@ -117,7 +115,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             .position(lng)
             .title(car.carId)
         )
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(lng, 15f))
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(lng, 17f))
     }
 
     override fun onMarkerClick(p0: Marker?) = false
@@ -128,23 +126,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         locationRequest.interval = 500
         locationRequest.fastestInterval = 500
         locationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 if (locationResult.locations.isNotEmpty()) {
                     super.onLocationResult(locationResult)
                     val location = locationResult.lastLocation
-                    val db = FirebaseFirestore.getInstance()
-                    // val docRef = db.collection("carLocation").document("CarLoc")
+
+                    // 讀取集合裡所有資料(文件)
                     val docRef = db.collection("carLocation")
                         .get()
                         .addOnSuccessListener { documents ->
                             for(document in documents){
                                 if (document.exists()) {
-                                //                              Log.d(TAG, "DocumentSnapshot data: ${document.data}")
                                     var car = document.toObject(Car::class.java)!!
-                                    Log.d(TAG, "DocumentSnapshot data: ${document.data}")
-                                    Log.d(TAG, "car id: ${car.carId}")
+//                                    Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+//                                    Log.d(TAG, "car id: ${car.carId}")
                                     if (car != null) {
                                         placeMarkerOnMap(car)
                                     }
