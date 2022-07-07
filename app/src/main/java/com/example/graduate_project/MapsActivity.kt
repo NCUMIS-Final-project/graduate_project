@@ -58,12 +58,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         private const val REQUEST_CHECK_SETTINGS = 2
     }
 
+//    data class Car(
+//        val carId: String? = null,
+//        val gpsLocation: GeoPoint? = null,
+//        val uploadTime: Date? = null  //資料庫接收的資料似乎是data 所以我把timestamp改成date
+//    )
     data class Car(
-        val carId: String? = null,
-        val gpsLocation: GeoPoint? = null,
-        val uploadTime: Date? = null  //資料庫接收的資料似乎是data 所以我把timestamp改成date
+        @get: PropertyName("carId") @set: PropertyName("carId") var carId: String? = "",
+        @get: PropertyName("gpsLocation") @set: PropertyName("gpsLocation") var gpsLocation: GeoPoint? = GeoPoint(0.0,0.0)
+    //        @get: PropertyName("uploadTime") @set: PropertyName("uploadTime") var uploadTime: Timestamp?= null
     )
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -107,11 +111,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     }
 
     // 放置 marker
-    private fun placeMarkerOnMap(location: Location) {
-        val lng = LatLng(location.latitude,location.longitude)
+    private fun placeMarkerOnMap(car: Car) {
+        val lng = car.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
         marker = mMap.addMarker(MarkerOptions()
             .position(lng)
-            .title("$lng")
+            .title(car.carId)
         )
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(lng, 15f))
     }
@@ -131,36 +135,26 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     super.onLocationResult(locationResult)
                     val location = locationResult.lastLocation
                     val db = FirebaseFirestore.getInstance()
-                    val docRef = db.collection("carLocation").document("CarLoc")
-                    docRef.get(Source.SERVER).addOnSuccessListener { documentSnapshot ->
-                        if (documentSnapshot.exists()) {
-                            var car = documentSnapshot.toObject(Car::class.java)!!
-                            Log.d(TAG, "DocumentSnapshot data: ${documentSnapshot.data}")
-                            Log.d(TAG, "car id: ${car.carId}")
-                        }else{
-                            Toast.makeText(this@MapsActivity, "Error!", Toast.LENGTH_SHORT).show()
-                        }
-//                    docRef.get(Source.SERVER).addOnSuccessListener { task ->
-//                        if (task != null) {addOnCompleteListener
-                    /*docRef.get().addOnCompleteListener { documentSnapshot ->
-                        if (documentSnapshot.isSuccessful){
-
-                            /** 下面註解掉的這行會報錯，不知道怎麼解決，
-                             * 我想把資料轉成Car型態，取裡面的經緯度 */
-                           var car = documentSnapshot.toObject(Car::class.java)
-                            Log.d(TAG, "DocumentSnapshot data: ${documentSnapshot.getResult().data}")
-
-/**                         資料取下來的樣子
- *                          {gpsLocation=GeoPoint { latitude=24.9653, longitude=121.1953 },
-                            uploadTime=Timestamp(seconds=1657036031, nanoseconds=840000000),
-                            carId=ouo-030}  */
-
-                        } else {
-                            Log.d(TAG, "Cached get failed: ", documentSnapshot.exception)
-                        }*/
+                    // val docRef = db.collection("carLocation").document("CarLoc")
+                    val docRef = db.collection("carLocation")
+                        .get()
+                        .addOnSuccessListener { documents ->
+                            for(document in documents){
+                                if (document.exists()) {
+                                //                              Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+                                    var car = document.toObject(Car::class.java)!!
+                                    Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+                                    Log.d(TAG, "car id: ${car.carId}")
+                                    if (car != null) {
+                                        placeMarkerOnMap(car)
+                                    }
+                                }else{
+                                    Toast.makeText(this@MapsActivity, "Error!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                     }.addOnFailureListener { exception ->
                             Log.d(TAG, "get failed with ", exception)
-                        }
+                    }
                 }
             }
         }
