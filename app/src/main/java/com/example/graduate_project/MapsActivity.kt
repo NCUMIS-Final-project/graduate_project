@@ -37,9 +37,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.firebase.firestore.*
-import com.google.firebase.firestore.ktx.toObject
-import java.util.Date
-import java.sql.Timestamp
+import java.util.*
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
 
@@ -52,6 +50,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private lateinit var locationRequest: LocationRequest
     private var locationUpdateState = false
     private var db = FirebaseFirestore.getInstance()
+    var hashMapMarker: HashMap<String, Marker> = HashMap()
 
     companion object{
         private const val LOCATION_REQUEST_CODE = 1
@@ -62,7 +61,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     data class Car(
         @get: PropertyName("carId") @set: PropertyName("carId") var carId: String? = "",
         @get: PropertyName("gpsLocation") @set: PropertyName("gpsLocation") var gpsLocation: GeoPoint? = GeoPoint(0.0,0.0),
-        @get: PropertyName("uploadTime") @set: PropertyName("uploadTime") var uploadTime: Date?= null
+        @get: PropertyName("uploadTime") @set: PropertyName("uploadTime") var uploadTime: Date?= null,
+        @get: PropertyName("carStatus") @set: PropertyName("carStatus") var carStatus: Int?= null,
+        @get: PropertyName("licensePlateNum") @set: PropertyName("licensePlateNum") var licensePlateNum: String?= null
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -99,8 +100,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             if (location != null) {
                 lastLocation = location
                 val currentLatLng = GeoPoint(location.latitude, location.longitude)
-                val returnLocation = Car("yourPosition", currentLatLng, null)
-                db.collection("carLocation").document("yourPosition").set(returnLocation, SetOptions.merge())
+//                val returnLocation = Car("yourPosition", currentLatLng, null)
+//                db.collection("carLocation").document("yourPosition").set(returnLocation, SetOptions.merge())
+                val ncu = LatLng(24.9714,121.1945)
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(ncu, 15f))
             }
         }
         getLocationUpdates()
@@ -110,14 +113,54 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     // 放置 marker
     private fun placeMarkerOnMap(car: Car) {
-        val lng = car.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
-        marker = mMap.addMarker(MarkerOptions()
-            .position(lng)
-            .title(car.carId)
-        )
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(lng, 17f))
+        if (car.carStatus!=0) { //若車輛狀態不為良好
+            val lng = car.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
+            marker = mMap.addMarker(
+                MarkerOptions()
+                    .position(lng)
+                    .title(car.carId)
+//                    .visible(car.carStatus!=0)
+            )
+            hashMapMarker[car.carId!!] = marker
+            Log.d("add_marker","$hashMapMarker[car.carId]")
+        }
     }
 
+    //更動Marker
+    private fun markermanagement(car:Car,change_type:DocumentChange){
+        if(change_type.type==DocumentChange.Type.ADDED){
+            placeMarkerOnMap(car)
+        }
+        if(change_type.type==DocumentChange.Type.MODIFIED){
+            val lng = car.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
+            val marker = hashMapMarker[car.carId]
+            Log.d("changing","${hashMapMarker[car.carId]}")
+            //車輛狀態改為良好
+            if(car.carStatus==0){
+                marker!!.remove()
+                hashMapMarker.remove(car.carId)
+                Log.d("remove","${hashMapMarker[car.carId]}")
+            }
+            //車輛狀態改為疑似酒駕
+            if(car.carStatus==1){
+                Log.d("modify1","${hashMapMarker[car.carId]}")
+                //這裡要放更改顏色的fun
+            }
+            //車輛狀態改為高度疑似酒駕
+            if(car.carStatus==2){
+                Log.d("modify2","${hashMapMarker[car.carId]}")
+                //這裡要放更改顏色的fun
+            }
+            //車輛更改座標
+            if (marker?.position!=lng) {
+                marker?.position = lng
+                Log.d("fixed","${hashMapMarker[car.carId]}")
+                //placeMarkerOnMap(car)
+            }
+        }
+    }
+
+    //移除Marker
     override fun onMarkerClick(p0: Marker?) = false
 
     // 連接資料庫取得位置資訊
@@ -130,27 +173,44 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             override fun onLocationResult(locationResult: LocationResult) {
                 if (locationResult.locations.isNotEmpty()) {
                     super.onLocationResult(locationResult)
-                    val location = locationResult.lastLocation
+//                    val location = locationResult.lastLocation
 
-                    // 讀取集合裡所有資料(文件)
+                    /**                    // 讀取集合裡所有資料(文件)
                     val docRef = db.collection("carLocation")
-                        .get()
-                        .addOnSuccessListener { documents ->
-                            for(document in documents){
-                                if (document.exists()) {
-                                    var car = document.toObject(Car::class.java)!!
-//                                    Log.d(TAG, "DocumentSnapshot data: ${document.data}")
-//                                    Log.d(TAG, "car id: ${car.carId}")
-                                    if (car != null) {
-                                        placeMarkerOnMap(car)
-                                    }
-                                }else{
-                                    Toast.makeText(this@MapsActivity, "Error!", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                    }.addOnFailureListener { exception ->
-                            Log.d(TAG, "get failed with ", exception)
+                    db.collection("carLocation")
+                    .get()
+                    .addOnSuccessListener { documents ->
+                    for(document in documents){
+                    if (document.exists()) {
+                    var car = document.toObject(Car::class.java)!!
+                    if (car != null) {
+                    placeMarkerOnMap(car)
                     }
+                    }else{
+                    Toast.makeText(this@MapsActivity, "Error!", Toast.LENGTH_SHORT).show()
+                    }
+                    }
+                    }.addOnFailureListener { exception ->
+                    Log.d(TAG, "get failed with ", exception)
+                    }*/
+
+                    db.collection("carInfo")
+                        .addSnapshotListener { value, e ->
+                            if (e != null) {
+                                Log.w(TAG, "Listen failed.", e)
+                                return@addSnapshotListener
+                            }
+                            for (dc in value!!.documentChanges) {
+                                var car = dc.document.toObject(MapsActivity.Car::class.java)
+                                Log.d("try","$car")
+                                when (dc.type) {
+                                    DocumentChange.Type.ADDED -> Log.d(TAG, "New city: ${dc.document.data}")
+                                    DocumentChange.Type.MODIFIED -> Log.d("test2", "Modified city: ${dc.document.data}")
+                                    DocumentChange.Type.REMOVED -> Log.d(TAG, "Removed city: ${dc.document.data}")
+                                }
+                                markermanagement(car,dc)
+                            }
+                        }
                 }
             }
         }
