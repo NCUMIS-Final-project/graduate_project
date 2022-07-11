@@ -124,9 +124,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     .position(lng)
                     .title(car.carId)
                     .icon(BitmapDescriptorFactory.fromResource(icon))
-//                    .visible(car.carStatus!=0)
             )
             hashMapMarker[car.carId!!] = marker
+//            marker?.showInfoWindow()
             Log.d("add_marker","$hashMapMarker[car.carId]")
         }
     }
@@ -149,13 +149,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             //車輛狀態改為疑似酒駕
             if(car.carStatus==1){
                 Log.d("modify1","${hashMapMarker[car.carId]}")
-                marker?.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_1))
+                if(marker!=null){
+                    marker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_1))
+                } else{
+                    placeMarkerOnMap(car)
+                }
+
                 //這裡要放更改顏色的fun
             }
             //車輛狀態改為高度疑似酒駕
             if(car.carStatus==2){
                 Log.d("modify2","${hashMapMarker[car.carId]}")
-                marker?.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_2))
+                if(marker!=null) {
+                    marker?.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_2))
+                }else{
+                    placeMarkerOnMap(car)
+                }
                 //這裡要放更改顏色的fun
             }
             //車輛更改座標
