@@ -33,9 +33,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Marker
-import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.*
 import com.google.firebase.firestore.*
 import java.util.*
 
@@ -113,12 +111,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     // 放置 marker
     private fun placeMarkerOnMap(car: Car) {
+        var icon = R.drawable.dot_0
+        if (car.carStatus == 1){
+            icon = R.drawable.dot_1
+        } else if(car.carStatus == 2){
+            icon = R.drawable.dot_2
+        }
         if (car.carStatus!=0) { //若車輛狀態不為良好
             val lng = car.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
             marker = mMap.addMarker(
                 MarkerOptions()
                     .position(lng)
                     .title(car.carId)
+                    .icon(BitmapDescriptorFactory.fromResource(icon))
 //                    .visible(car.carStatus!=0)
             )
             hashMapMarker[car.carId!!] = marker
@@ -144,11 +149,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             //車輛狀態改為疑似酒駕
             if(car.carStatus==1){
                 Log.d("modify1","${hashMapMarker[car.carId]}")
+                marker?.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_1))
                 //這裡要放更改顏色的fun
             }
             //車輛狀態改為高度疑似酒駕
             if(car.carStatus==2){
                 Log.d("modify2","${hashMapMarker[car.carId]}")
+                marker?.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_2))
                 //這裡要放更改顏色的fun
             }
             //車輛更改座標
