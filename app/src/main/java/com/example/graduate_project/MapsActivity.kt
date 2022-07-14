@@ -24,6 +24,8 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -33,9 +35,17 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.*
-import com.google.firebase.firestore.*
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
+import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.firebase.firestore.DocumentChange
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.GeoPoint
+import com.google.firebase.firestore.PropertyName
 import java.util.*
+
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
 
@@ -61,7 +71,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         @get: PropertyName("gpsLocation") @set: PropertyName("gpsLocation") var gpsLocation: GeoPoint? = GeoPoint(0.0,0.0),
         @get: PropertyName("uploadTime") @set: PropertyName("uploadTime") var uploadTime: Date?= null,
         @get: PropertyName("carStatus") @set: PropertyName("carStatus") var carStatus: Int?= null,
-        @get: PropertyName("licensePlateNum") @set: PropertyName("licensePlateNum") var licensePlateNum: String?= null
+        @get: PropertyName("licensePlateNum") @set: PropertyName("licensePlateNum") var licensePlateNum: String?= null,
+        @get: PropertyName("HighSusTime") @set: PropertyName("HighSusTime") var HighSusTime: Int?= null
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,7 +117,33 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
         getLocationUpdates()
         startLocationUpdates()
-
+        mMap.setOnMarkerClickListener { marker -> // on marker click we are getting the title of our marker
+            // which is clicked and displaying it in a toast message.
+            val id=marker.title
+            db.collection("carInfo").document("${id}").get()
+                .addOnSuccessListener { document ->
+                    if (document != null) {
+                        var car = document.toObject(MapsActivity.Car::class.java)
+                        val dialog = BottomSheetDialog(this)
+                        val view = layoutInflater.inflate(R.layout.layout_bottom_sheet, null)
+                        val license = view.findViewById<TextView>(R.id.textView)
+                        val sus = view.findViewById<TextView>(R.id.textView2)
+                        if (car != null) {
+                            license.text = "${car.licensePlateNum}"
+                            sus.text="高度疑似酒駕次數為${car.HighSusTime}次"
+                        }
+                        dialog.setContentView(view)
+                        dialog.show()
+                        Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+                    } else {
+                        Log.d(TAG, "No such document")
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    Log.d(TAG, "get failed with ", exception)
+                }
+            false
+        }
     }
 
     // 放置 marker
@@ -119,12 +156,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
         if (car.carStatus!=0) { //若車輛狀態不為良好
             val lng = car.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
-            marker = mMap.addMarker(
+            mMap.addMarker(
                 MarkerOptions()
                     .position(lng)
                     .title(car.carId)
                     .icon(BitmapDescriptorFactory.fromResource(icon))
-            )
+            ).also { marker = it }
             hashMapMarker[car.carId!!] = marker
 //            marker?.showInfoWindow()
             Log.d("add_marker","$hashMapMarker[car.carId]")
@@ -176,7 +213,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
     }
 
-    //移除Marker
     override fun onMarkerClick(p0: Marker?) = false
 
     // 連接資料庫取得位置資訊
@@ -220,9 +256,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                                 var car = dc.document.toObject(MapsActivity.Car::class.java)
                                 Log.d("try","$car")
                                 when (dc.type) {
-                                    DocumentChange.Type.ADDED -> Log.d(TAG, "New city: ${dc.document.data}")
-                                    DocumentChange.Type.MODIFIED -> Log.d("test2", "Modified city: ${dc.document.data}")
-                                    DocumentChange.Type.REMOVED -> Log.d(TAG, "Removed city: ${dc.document.data}")
+                                    DocumentChange.Type.ADDED -> Log.d(TAG, "New marker: ${dc.document.data}")
+                                    DocumentChange.Type.MODIFIED -> Log.d("test2", "Modified marker: ${dc.document.data}")
+                                    DocumentChange.Type.REMOVED -> Log.d(TAG, "Removed marker: ${dc.document.data}")
                                 }
                                 markermanagement(car,dc)
                             }

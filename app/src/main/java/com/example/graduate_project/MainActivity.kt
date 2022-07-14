@@ -23,7 +23,7 @@ class MainActivity : AppCompatActivity() {
         @get: PropertyName("id") @set: PropertyName("id") var id: String = "",
         @get: PropertyName("password") @set: PropertyName("password") var password: String = ""
     )
-    val db = FirebaseFirestore.getInstance()
+    private val db = FirebaseFirestore.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,8 +33,8 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, MapsActivity::class.java)
         startActivity(intent)
 
-        var user_account: TextView = findViewById(R.id.et2) as TextView
-        var user_password: TextView = findViewById(R.id.et3) as TextView
+        var user_account: TextView = findViewById<TextView>(R.id.et2)
+        var user_password: TextView = findViewById<TextView>(R.id.et3)
         val submit =
             findViewById<View>(R.id.button) as Button
         submit.setOnClickListener {
@@ -53,7 +53,7 @@ class MainActivity : AppCompatActivity() {
         val docRef = db.collection("police").document("$id")
         docRef.get(Source.SERVER).addOnSuccessListener { documentSnapshot ->
             if (documentSnapshot.exists()) {
-                var result = documentSnapshot.toObject(police::class.java)!!
+                val result = documentSnapshot.toObject(police::class.java)!!
                 if (password == result.password) {
                     //success_dialog()
                     val intent = Intent(this, MapsActivity::class.java)
