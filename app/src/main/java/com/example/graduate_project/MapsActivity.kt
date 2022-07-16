@@ -40,12 +40,9 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.firebase.firestore.DocumentChange
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.GeoPoint
-import com.google.firebase.firestore.PropertyName
+import com.google.common.base.Objects
+import com.google.firebase.firestore.*
 import java.util.*
-
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
 
@@ -59,6 +56,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private var locationUpdateState = false
     private var db = FirebaseFirestore.getInstance()
     var hashMapMarker: HashMap<String, Marker> = HashMap()
+//    private var registration: ListenerRegistration? = null
+    private var clickedMarkerId: String ?= null
 
     companion object{
         private const val LOCATION_REQUEST_CODE = 1
@@ -131,6 +130,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                         if (car != null) {
                             license.text = "${car.licensePlateNum}"
                             sus.text="高度疑似酒駕次數為${car.HighSusTime}次"
+                            // 紀錄目前點擊 marker 的 id(title)
+                            clickedMarkerId = id
                         }
                         dialog.setContentView(view)
                         dialog.show()
@@ -142,9 +143,34 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 .addOnFailureListener { exception ->
                     Log.d(TAG, "get failed with ", exception)
                 }
+            // 追蹤marker的位置
+//            MarkerClickTracking(id)
+//            registration.remove()
+//            false
             false
         }
     }
+
+    // 追蹤已點擊marker的位置
+//    private fun MarkerClickTracking(id: String){
+//        registration?.remove()
+//        registration = db.collection("carInfo").document("${id}")
+//            .addSnapshotListener { document, e ->
+//                if (e != null) {
+//                    Log.w(TAG, "Listen failed.", e)
+//                    return@addSnapshotListener
+//                }
+//                if (document != null && document.exists()) {
+//                    var car = document.toObject(MapsActivity.Car::class.java)
+//                    Log.d("click_car", "$car")
+//                    Log.d("click_document", "$document")
+//                    var updateGps = car?.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
+//                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(updateGps, 15f))
+////                    mMap.animateCamera(CameraUpdateFactory.newLatLng(updateGps))
+//                }
+//            }
+//    }
+
 
     // 放置 marker
     private fun placeMarkerOnMap(car: Car) {
@@ -210,6 +236,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 Log.d("fixed","${hashMapMarker[car.carId]}")
                 //placeMarkerOnMap(car)
             }
+            if(car.carId==clickedMarkerId){
+                Log.d("click_car", "$car")
+                var updateGps = car?.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(updateGps, 15f))
+            }
         }
     }
 
@@ -261,6 +292,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                                     DocumentChange.Type.REMOVED -> Log.d(TAG, "Removed marker: ${dc.document.data}")
                                 }
                                 markermanagement(car,dc)
+
                             }
                         }
                 }
@@ -308,121 +340,3 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
     }
 }
-
-/*    private fun createLocationRequest() {
-     // 初始化locationRequest，刪掉會報錯
-     locationRequest = LocationRequest()
-
-     locationRequest.interval = 500
-     locationRequest.fastestInterval = 500
-     locationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-
-     val builder = LocationSettingsRequest.Builder()
-         .addLocationRequest(locationRequest)
-
-     //val client = LocationServices.getSettingsClient(this)
-//        val task = client.checkLocationSettings(builder.build())
-
-
-     locationCallback = object : LocationCallback() {
-         override fun onLocationResult(locationResult: LocationResult) {
-             if (locationResult.locations.isNotEmpty()) {
-                 val location = locationResult.lastLocation
-
-                 lateinit var databaseRef: DatabaseReference
-                 databaseRef = Firebase.database.reference
-                 val locationlogging = LocationLogging(location.latitude, location.longitude)
-                 databaseRef.child("/users/userlocation").setValue(locationlogging)
-
-                     .addOnSuccessListener {
-                         Toast.makeText(applicationContext, "Locations written into the database", Toast.LENGTH_LONG).show()
-                     }
-                     .addOnFailureListener {
-                         Toast.makeText(applicationContext, "Error occured while writing the locations", Toast.LENGTH_LONG).show()
-                     }
-
-
-                 if (location != null) {
-                     val latLng = LatLng(location.latitude, location.longitude)
-                     val markerOptions = MarkerOptions().position(latLng).title("$latLng")
-                     mMap.addMarker(markerOptions)
-                     mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
-                 }
-             }
-         }
-     }
-
-
-     task.addOnSuccessListener {
-         locationUpdateState = true
-         startLocationUpdates()
-     }
-     task.addOnFailureListener { e ->
-         if (e is ResolvableApiException) {
-             // Location settings are not satisfied, but this can be fixed
-             // by showing the user a dialog.
-             try {
-                 // Show the dialog by calling startResolutionForResult(),
-                 // and check the result in onActivityResult().
-                 e.startResolutionForResult(this@MapsActivity,
-                     REQUEST_CHECK_SETTINGS)
-             } catch (sendEx: IntentSender.SendIntentException) {
-                 // Ignore the error.
-             }
-         }
-     }
- }   */
-
-
-/*
-原本在onCreat()裡
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(locationResult: LocationResult) {
-                super.onLocationResult(locationResult)
-
-                if (locationResult.locations.isNotEmpty()) {
-
-                    lateinit var databaseRef: DatabaseReference
-                    databaseRef = Firebase.database.reference
-                    val locationlogging = LocationLogging(location.latitude, location.longitude)
-                    databaseRef.child("/users/userlocation").setValue(locationlogging)
-
-                        .addOnSuccessListener {
-                            Toast.makeText(applicationContext, "Locations written into the database", Toast.LENGTH_LONG).show()
-                        }
-                        .addOnFailureListener {
-                            Toast.makeText(applicationContext, "Error occured while writing the locations", Toast.LENGTH_LONG).show()
-                        }
-                    val uid = FirebaseAuth.getInstance().currentUser?.uid
-                val db =  FirebaseFirestore.getInstance()
-                Log.d(TAG, "test")
-                    val carLocRef = rootRef.collection("carLocation")
-                    val GPSRef = carLocRef.document(carLoc)
-                val docRef = db.collection("carLocation").document("carLoc")
-                docRef.get()
-                    .addOnSuccessListener { task ->
-                        if (task != null) {
-                            Log.d(TAG, "DocumentSnapshot data: ${task.data}")
-                                val latitude = task.data.getLatitude("latitude")
-                                val longitude = document.getDouble("longitude")
-                                Log.d(TAG, latitude + ", " + longitude)
-                        } else {
-                            Log.d(TAG, "No such document")
-                        }
-                    }
-                    .addOnFailureListener { exception ->
-                            Log.d(TAG, "get failed with ", exception)
-                    }
-
-                    if (location != null) {
-                        val latLng = LatLng(location.latitude, location.longitude)
-                        val markerOptions = MarkerOptions().position(latLng)
-                        mMap.addMarker(markerOptions)
-                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
-                    }
-                }
-                lastLocation = p0.lastLocation!!
-                placeMarkerOnMap(lastLocation)
-            }
-        }
-        createLocationRequest()*/
