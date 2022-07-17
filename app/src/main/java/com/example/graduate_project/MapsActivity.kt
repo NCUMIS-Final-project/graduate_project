@@ -19,14 +19,17 @@ package com.example.graduate_project
 import android.Manifest
 import android.app.Activity
 import android.content.ContentValues.TAG
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.example.graduate_project.databinding.ActivityMapsBinding
@@ -116,9 +119,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
         getLocationUpdates()
         startLocationUpdates()
-        mMap.setOnMarkerClickListener { marker -> // on marker click we are getting the title of our marker
-            // which is clicked and displaying it in a toast message.
+        mMap.setOnMarkerClickListener { marker ->
             val id=marker.title
+            clickedMarkerId = id
             db.collection("carInfo").document("${id}").get()
                 .addOnSuccessListener { document ->
                     if (document != null) {
@@ -130,11 +133,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                         if (car != null) {
                             license.text = "${car.licensePlateNum}"
                             sus.text="高度疑似酒駕次數為${car.HighSusTime}次"
-                            // 紀錄目前點擊 marker 的 id(title)
-                            clickedMarkerId = id
                         }
                         dialog.setContentView(view)
                         dialog.show()
+                        val submit = findViewById<View>(R.id.button2) as Button
+                        submit.setOnClickListener {
+                            comfirm_dialog()
+                        }
                         Log.d(TAG, "DocumentSnapshot data: ${document.data}")
                     } else {
                         Log.d(TAG, "No such document")
@@ -276,8 +281,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     }.addOnFailureListener { exception ->
                     Log.d(TAG, "get failed with ", exception)
                     }*/
-
-                    db.collection("carInfo")
+                    val docRef=db.collection("carInfo")
                         .addSnapshotListener { value, e ->
                             if (e != null) {
                                 Log.w(TAG, "Listen failed.", e)
@@ -292,7 +296,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                                     DocumentChange.Type.REMOVED -> Log.d(TAG, "Removed marker: ${dc.document.data}")
                                 }
                                 markermanagement(car,dc)
-
                             }
                         }
                 }
@@ -338,5 +341,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         if (!locationUpdateState) {
             getLocationUpdates()
         }
+    }
+
+    private fun comfirm_dialog(){
+        AlertDialog.Builder(this)
+            .setMessage("是否確認退出追蹤模式")
+            .setCancelable(false)
+            .setPositiveButton("確認", DialogInterface.OnClickListener {
+                    dialog, id ->
+                Toast.makeText(this,"退出追蹤模式測試",Toast.LENGTH_SHORT).show()
+                hashMapMarker.clear()
+                getLocationUpdates()
+            })
+            .setNegativeButton("取消", DialogInterface.OnClickListener {
+                    dialog, id -> dialog.cancel()
+            })
+            .show()
     }
 }
