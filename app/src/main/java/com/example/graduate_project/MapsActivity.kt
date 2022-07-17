@@ -59,7 +59,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private var locationUpdateState = false
     private var db = FirebaseFirestore.getInstance()
     var hashMapMarker: HashMap<String, Marker> = HashMap()
-//    private var registration: ListenerRegistration? = null
+    private var registration: ListenerRegistration? = null
     private var clickedMarkerId: String ?= null
 
     companion object{
@@ -110,9 +110,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         fusedLocationClient.lastLocation.addOnSuccessListener(this) {location ->
             if (location != null) {
                 lastLocation = location
+                // 目前定位位置
                 val currentLatLng = GeoPoint(location.latitude, location.longitude)
-//                val returnLocation = Car("yourPosition", currentLatLng, null)
-//                db.collection("carLocation").document("yourPosition").set(returnLocation, SetOptions.merge())
+                // 測試用座標
                 val ncu = LatLng(24.9714,121.1945)
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(ncu, 15f))
             }
@@ -122,6 +122,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         mMap.setOnMarkerClickListener { marker ->
             val id=marker.title
             clickedMarkerId = id
+
             db.collection("carInfo").document("${id}").get()
                 .addOnSuccessListener { document ->
                     if (document != null) {
@@ -136,9 +137,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                         }
                         dialog.setContentView(view)
                         dialog.show()
-                        val submit = findViewById<View>(R.id.button2) as Button
+                        val submit =view.findViewById<View>(R.id.button2) as Button
                         submit.setOnClickListener {
                             comfirm_dialog()
+                        }
+                        // Marker追蹤，但還沒改成新建 Listener 的模式
+                        MarkerClickTracking(id)
+                        // 隱藏其他 Marker
+                        for (marker in hashMapMarker){
+                            if (marker.key!=clickedMarkerId){
+                                marker.value.isVisible=false
+                            }
                         }
                         Log.d(TAG, "DocumentSnapshot data: ${document.data}")
                     } else {
@@ -148,34 +157,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 .addOnFailureListener { exception ->
                     Log.d(TAG, "get failed with ", exception)
                 }
-            // 追蹤marker的位置
-//            MarkerClickTracking(id)
-//            registration.remove()
-//            false
             false
         }
     }
-
-    // 追蹤已點擊marker的位置
-//    private fun MarkerClickTracking(id: String){
-//        registration?.remove()
-//        registration = db.collection("carInfo").document("${id}")
-//            .addSnapshotListener { document, e ->
-//                if (e != null) {
-//                    Log.w(TAG, "Listen failed.", e)
-//                    return@addSnapshotListener
-//                }
-//                if (document != null && document.exists()) {
-//                    var car = document.toObject(MapsActivity.Car::class.java)
-//                    Log.d("click_car", "$car")
-//                    Log.d("click_document", "$document")
-//                    var updateGps = car?.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
-//                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(updateGps, 15f))
-////                    mMap.animateCamera(CameraUpdateFactory.newLatLng(updateGps))
-//                }
-//            }
-//    }
-
 
     // 放置 marker
     private fun placeMarkerOnMap(car: Car) {
@@ -185,7 +169,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         } else if(car.carStatus == 2){
             icon = R.drawable.dot_2
         }
-        if (car.carStatus!=0) { //若車輛狀態不為良好
+
+        //若車輛狀態不為良好
+        if (car.carStatus==1 || car.carStatus==2) {
             val lng = car.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
             mMap.addMarker(
                 MarkerOptions()
@@ -194,7 +180,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     .icon(BitmapDescriptorFactory.fromResource(icon))
             ).also { marker = it }
             hashMapMarker[car.carId!!] = marker
-//            marker?.showInfoWindow()
             Log.d("add_marker","$hashMapMarker[car.carId]")
         }
     }
@@ -208,43 +193,41 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             val lng = car.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
             val marker = hashMapMarker[car.carId]
             Log.d("changing","${hashMapMarker[car.carId]}")
+
             //車輛狀態改為良好
             if(car.carStatus==0){
-                marker!!.remove()
+//                marker!!.remove()
                 hashMapMarker.remove(car.carId)
+                marker?.isVisible=false
                 Log.d("remove","${hashMapMarker[car.carId]}")
             }
+
             //車輛狀態改為疑似酒駕
             if(car.carStatus==1){
                 Log.d("modify1","${hashMapMarker[car.carId]}")
                 if(marker!=null){
-                    marker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_1))
+                    marker?.isVisible=true
+                    marker?.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_1))
                 } else{
                     placeMarkerOnMap(car)
                 }
-
-                //這裡要放更改顏色的fun
             }
+
             //車輛狀態改為高度疑似酒駕
             if(car.carStatus==2){
                 Log.d("modify2","${hashMapMarker[car.carId]}")
                 if(marker!=null) {
+                    marker?.isVisible=true
                     marker?.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_2))
                 }else{
                     placeMarkerOnMap(car)
                 }
-                //這裡要放更改顏色的fun
             }
+
             //車輛更改座標
             if (marker?.position!=lng) {
                 marker?.position = lng
                 Log.d("fixed","${hashMapMarker[car.carId]}")
-                //placeMarkerOnMap(car)
-            }
-            if(car.carId==clickedMarkerId){
-                Log.d("click_car", "$car")
-                var updateGps = car?.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
-                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(updateGps, 15f))
             }
         }
     }
@@ -281,7 +264,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     }.addOnFailureListener { exception ->
                     Log.d(TAG, "get failed with ", exception)
                     }*/
-                    val docRef=db.collection("carInfo")
+                    Log.d("getLocation_bef", "{$registration}")
+                    registration = db.collection("carInfo")
                         .addSnapshotListener { value, e ->
                             if (e != null) {
                                 Log.w(TAG, "Listen failed.", e)
@@ -298,6 +282,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                                 markermanagement(car,dc)
                             }
                         }
+                    Log.d("getLocation_aft", "{$registration}")
                 }
             }
         }
@@ -315,11 +300,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         // 權限通過
         fusedLocationClient.requestLocationUpdates(locationRequest,locationCallback, null)
     }
-
-//  目前沒有用到
-//    private fun stopLocationUpdates(){
-//        fusedLocationClient.removeLocationUpdates(locationCallback)
-//    }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -350,12 +330,38 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             .setPositiveButton("確認", DialogInterface.OnClickListener {
                     dialog, id ->
                 Toast.makeText(this,"退出追蹤模式測試",Toast.LENGTH_SHORT).show()
-                hashMapMarker.clear()
+//                hashMapMarker.clear()
                 getLocationUpdates()
+                Log.d("getLocationUpdate", "{$registration}")
             })
             .setNegativeButton("取消", DialogInterface.OnClickListener {
                     dialog, id -> dialog.cancel()
             })
             .show()
     }
+
+    // 追蹤已點擊marker的位置
+    private fun MarkerClickTracking(id: String){
+        Log.d("MarkerClickTracking_bef", "$registration")
+        registration?.remove()
+        getLocationUpdates()
+        Log.d("MarkerClickTracking_rem", "$registration")
+    //        registration = db.collection("carInfo").document("${id}")
+//            .addSnapshotListener { document, e ->
+//                if (e != null) {
+//                    Log.w(TAG, "Listen failed.", e)
+//                    return@addSnapshotListener
+//                }
+//                if (document != null && document.exists()) {
+//                    var car = document.toObject(MapsActivity.Car::class.java)
+//                    Log.d("click_car", "$car")
+//                    Log.d("click_document", "$document")
+//                    var updateGps = car?.gpsLocation?.let { LatLng(it.latitude, it.longitude) }
+//                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(updateGps, 15f))
+////                    mMap.animateCamera(CameraUpdateFactory.newLatLng(updateGps))
+//                }
+//            }
+    }
 }
+
+
