@@ -16,6 +16,7 @@ package com.example.graduate_project
  *  從Firestore拿取資訊
  *  */
 
+
 import android.Manifest
 import android.app.Activity
 import android.content.ContentValues.TAG
@@ -43,7 +44,6 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.common.base.Objects
 import com.google.firebase.firestore.*
 import java.util.*
 
@@ -70,13 +70,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     data class Car(
         @get: PropertyName("carId") @set: PropertyName("carId") var carId: String? = "",
-        @get: PropertyName("gpsLocation") @set: PropertyName("gpsLocation") var gpsLocation: GeoPoint? = GeoPoint(
-            0.0,
-            0.0
-        ),
+        @get: PropertyName("gpsLocation") @set: PropertyName("gpsLocation") var gpsLocation:
+        GeoPoint? = GeoPoint(0.0, 0.0),
         @get: PropertyName("uploadTime") @set: PropertyName("uploadTime") var uploadTime: Date? = null,
         @get: PropertyName("carStatus") @set: PropertyName("carStatus") var carStatus: Int? = null,
-        @get: PropertyName("licensePlateNum") @set: PropertyName("licensePlateNum") var licensePlateNum: String? = null,
+        @get: PropertyName("licensePlateNum") @set: PropertyName("licensePlateNum") var licensePlateNum:
+        String? = null,
         @get: PropertyName("HighSusTime") @set: PropertyName("HighSusTime") var HighSusTime: Int? = null
     )
 
@@ -103,7 +102,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private fun setUpMap() {
         // 沒定位權限：請求權限
         if (ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.ACCESS_FINE_LOCATION
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(
@@ -119,31 +119,129 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         fusedLocationClient.lastLocation.addOnSuccessListener(this) { location ->
             if (location != null) {
                 lastLocation = location
-                // 目前定位位置
-                val currentLatLng = GeoPoint(location.latitude, location.longitude)
+
                 // 測試用座標
                 val ncu = LatLng(24.9714, 121.1945)
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(ncu, 15f))
+
+                /**目前定位位置，實際運作用這個
+                val currentLatLng = GeoPoint(location.latitude, location.longitude)
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
+                 **/
             }
         }
         getLocationUpdates()
         startLocationUpdates()
+        setOnMarkerClickListener()
+    }
+
+    // 連接資料庫取得位置資訊
+    private fun getLocationUpdates() {
+        locationRequest = LocationRequest()
+        locationRequest.interval = 500
+        locationRequest.fastestInterval = 500
+        locationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                if (locationResult.locations.isNotEmpty()) {
+                    super.onLocationResult(locationResult)
+
+                    // 建立預設地圖(非追蹤)
+                    snapshot(null)
+                }
+            }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CHECK_SETTINGS) {
+            if (resultCode == Activity.RESULT_OK) {
+                locationUpdateState = true
+                startLocationUpdates()
+            }
+        }
+    }
+
+    // 取得最新資訊後開始更新資料
+    private fun startLocationUpdates() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+            return
+        }
+        // 權限通過
+        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
+    }
+
+    // 根據是否傳入id判斷建立哪種Listener
+    private fun snapshot(id: String?) {
+
+        // 每次切換模式都先移除所有Marker
+        for (marker in hashMapMarker) {
+            marker.value.remove()
+        }
+
+        // 設定資料庫搜尋條件，預設是回傳所有資料，如果有id就回傳carId相同的資料
+        var query = db.collection("carInfo").whereNotEqualTo("carId", null)
+        if (id != null) {
+            query = db.collection("carInfo").whereEqualTo("carId", "$id")
+        }
+
+        // 建立Listener
+        registration = query.addSnapshotListener { value, e ->
+            if (e != null) {
+                Log.w(TAG, "Listen failed.", e)
+                return@addSnapshotListener
+            }
+            for (dc in value!!.documentChanges) {
+                var car = dc.document.toObject(MapsActivity.Car::class.java)
+                when (dc.type) {
+                    DocumentChange.Type.ADDED -> Log.d(TAG, "New marker: ${dc.document.data}")
+                    DocumentChange.Type.REMOVED -> Log.d(TAG, "Removed marker: ${dc.document.data}")
+                    DocumentChange.Type.MODIFIED -> {
+                        // 如果是追蹤模式，座標改變時更改camera位置
+                        if (id != null) {
+                            mMap.animateCamera(
+                                CameraUpdateFactory.newLatLng(
+                                    car.gpsLocation?.let { LatLng(it.latitude, it.longitude) })
+                            )
+                        }
+                    }
+                }
+                markerManagement(car, dc)
+            }
+        }
+    }
+
+    private fun setOnMarkerClickListener() {
         mMap.setOnMarkerClickListener { marker ->
             val id = marker.title
             clickedMarkerId = id
-            Log.d("clickedMarkerId","$clickedMarkerId")
+
             db.collection("carInfo").document("${id}").get()
                 .addOnSuccessListener { document ->
                     if (document != null) {
                         var car = document.toObject(MapsActivity.Car::class.java)
                         val dialog = BottomSheetDialog(this)
+//                        val dialog = BottomSheetDialog(this,R.style,R.layout.layout_bottom_sheet)
+//                        val dialog = BottomSheetDialog(this,R.style,R.style.bottomsheet)
                         val view = layoutInflater.inflate(R.layout.layout_bottom_sheet, null)
                         val license = view.findViewById<TextView>(R.id.textView)
                         val sus = view.findViewById<TextView>(R.id.textView2)
                         if (car != null) {
                             license.text = "${car.licensePlateNum}"
                             sus.text = "高度疑似酒駕次數為${car.HighSusTime}次"
+
                             // 進入clickedMarkerId的追蹤畫面
+                            registration!!.remove()
                             snapshot(clickedMarkerId)
                         }
                         dialog.setContentView(view)
@@ -152,13 +250,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                         submit.setOnClickListener {
                             comfirm_dialog()
                         }
-                        // 隱藏其他 Marker
-                        for (marker in hashMapMarker) {
-                            if (marker.key != clickedMarkerId) {
-                                marker.value.isVisible = false
-                            }
-                        }
-                        Log.d(TAG, "DocumentSnapshot data: ${document.data}")
                     } else {
                         Log.d(TAG, "No such document")
                     }
@@ -189,12 +280,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     .icon(BitmapDescriptorFactory.fromResource(icon))
             ).also { marker = it }
             hashMapMarker[car.carId!!] = marker
-            Log.d("add_marker", "$hashMapMarker[car.carId]")
         }
     }
 
     //更動Marker
-    private fun markermanagement(car: Car, change_type: DocumentChange) {
+    private fun markerManagement(car: Car, change_type: DocumentChange) {
         if (change_type.type == DocumentChange.Type.ADDED) {
             placeMarkerOnMap(car)
         }
@@ -205,15 +295,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
             //車輛狀態改為良好
             if (car.carStatus == 0) {
-//                marker!!.remove()
                 hashMapMarker.remove(car.carId)
                 marker?.isVisible = false
-                Log.d("remove", "${hashMapMarker[car.carId]}")
             }
 
             //車輛狀態改為疑似酒駕
             if (car.carStatus == 1) {
-                Log.d("modify1", "${hashMapMarker[car.carId]}")
                 if (marker != null) {
                     marker?.isVisible = true
                     marker?.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_1))
@@ -224,7 +311,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
             //車輛狀態改為高度疑似酒駕
             if (car.carStatus == 2) {
-                Log.d("modify2", "${hashMapMarker[car.carId]}")
                 if (marker != null) {
                     marker?.isVisible = true
                     marker?.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_2))
@@ -232,7 +318,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     placeMarkerOnMap(car)
                 }
             }
-
             //車輛更改座標
             if (marker?.position != lng) {
                 marker?.position = lng
@@ -243,81 +328,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     override fun onMarkerClick(p0: Marker?) = false
 
-    // 連接資料庫取得位置資訊
-    private fun getLocationUpdates() {
-        locationRequest = LocationRequest()
-        locationRequest.interval = 500
-        locationRequest.fastestInterval = 500
-        locationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(locationResult: LocationResult) {
-                if (locationResult.locations.isNotEmpty()) {
-                    super.onLocationResult(locationResult)
-//                    val location = locationResult.lastLocation
+    private fun comfirm_dialog() {
+        AlertDialog.Builder(this)
+            .setMessage("是否確認退出追蹤模式")
+            .setCancelable(false)
+            .setPositiveButton("確認", DialogInterface.OnClickListener { dialog, id ->
+                Toast.makeText(this, "退出追蹤模式測試", Toast.LENGTH_SHORT).show()
 
-                    // 建立預設地圖(非追蹤)
-                    snapshot(null)
-                }
-            }
-        }
-//        Log.d("getLocation_bef", "{$registration}")
-//        registration = db.collection("carInfo")
-//            .addSnapshotListener { value, e ->
-//                if (e != null) {
-//                    Log.w(TAG, "Listen failed.", e)
-//                    return@addSnapshotListener
-//                }
-//                Log.d("snapshot_value", "{$value}")
-//                for (dc in value!!.documentChanges) {
-//                    var car = dc.document.toObject(MapsActivity.Car::class.java)
-//                    Log.d("try", "$car")
-//                    Log.d("snapshot_dc", "{$dc}")
-//                    when (dc.type) {
-//                        DocumentChange.Type.ADDED -> Log.d(
-//                            TAG,
-//                            "New marker: ${dc.document.data}"
-//                        )
-//                        DocumentChange.Type.MODIFIED -> Log.d(
-//                            "test2",
-//                            "Modified marker: ${dc.document.data}"
-//                        )
-//                        DocumentChange.Type.REMOVED -> Log.d(
-//                            TAG,
-//                            "Removed marker: ${dc.document.data}"
-//                        )
-//                    }
-//                    markermanagement(car, dc)
-//                }
-//            }
-//        registration?.remove()
-    }
-
-    // 取得最新資訊後開始更新資料
-    private fun startLocationUpdates() {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                LOCATION_PERMISSION_REQUEST_CODE
-            )
-            return
-        }
-        // 權限通過
-        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_CHECK_SETTINGS) {
-            if (resultCode == Activity.RESULT_OK) {
-                locationUpdateState = true
-                startLocationUpdates()
-            }
-        }
+                // 退出追蹤模式
+                registration!!.remove()
+                snapshot(null)
+            })
+            .setNegativeButton("取消", DialogInterface.OnClickListener { dialog, id ->
+                dialog.cancel()
+            })
+            .show()
     }
 
     override fun onPause() {
@@ -332,77 +357,4 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
     }
 
-    private fun comfirm_dialog() {
-        AlertDialog.Builder(this)
-            .setMessage("是否確認退出追蹤模式")
-            .setCancelable(false)
-            .setPositiveButton("確認", DialogInterface.OnClickListener { dialog, id ->
-                Toast.makeText(this, "退出追蹤模式測試", Toast.LENGTH_SHORT).show()
-//                hashMapMarker.clear()
-//                getLocationUpdates()
-                // 退出追蹤模式
-                snapshot(null)
-                Log.d("getLocationUpdate", "{$registration}")
-            })
-            .setNegativeButton("取消", DialogInterface.OnClickListener { dialog, id ->
-                dialog.cancel()
-            })
-            .show()
-    }
-
-    // 根據是否傳入id判斷建立哪種Listener
-    private fun snapshot(id: String?) {
-        Log.d("getLocation_bef", "{$registration}")
-        if (id == null){
-            registration = db.collection("carInfo")
-                .addSnapshotListener { value, e ->
-                    if (e != null) {
-                        Log.w(TAG, "Listen failed.", e)
-                        return@addSnapshotListener
-                    }
-                    Log.d("snapshot_value", "{$value}")
-                    for (dc in value!!.documentChanges) {
-                        var car = dc.document.toObject(MapsActivity.Car::class.java)
-                        Log.d("try", "$car")
-                        Log.d("snapshot_dc", "{$dc}")
-                        when (dc.type) {
-                            DocumentChange.Type.ADDED -> Log.d(TAG,"New marker: ${dc.document.data}")
-                            DocumentChange.Type.MODIFIED -> Log.d("test2","Modified marker: ${dc.document.data}")
-                            DocumentChange.Type.REMOVED -> Log.d(TAG,"Removed marker: ${dc.document.data}")
-                        }
-                        markermanagement(car, dc)
-                    }
-                }
-        }
-        else{
-            registration = db.collection("carInfo").whereEqualTo("carId", "$id")
-                .addSnapshotListener { document, e ->
-                    if (e != null) {
-                        Log.w(TAG, "Listen failed.", e)
-                        return@addSnapshotListener
-                    }
-                    Log.d("snapshot", "{$document}")
-                    for (dc in document!!.documentChanges) {
-                        var car = dc.document.toObject(MapsActivity.Car::class.java)
-                        when (dc.type) {
-                            DocumentChange.Type.ADDED -> Log.d(
-                                TAG,
-                                "New marker: ${dc.document.data}"
-                            )
-                            DocumentChange.Type.MODIFIED -> Log.d(
-                                "test2",
-                                "Modified marker: ${dc.document.data}"
-                            )
-                            DocumentChange.Type.REMOVED -> Log.d(
-                                TAG,
-                                "Removed marker: ${dc.document.data}"
-                            )
-                        }
-                        markermanagement(car, dc)
-                    }
-                }
-        }
-
-        Log.d("getLocation_aft", "{$registration}")
-    }
 }
