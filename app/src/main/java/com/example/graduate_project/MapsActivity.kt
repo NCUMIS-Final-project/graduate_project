@@ -130,12 +130,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                  **/
             }
         }
+        // 建立預設地圖(非追蹤)
+        registration?.remove()
+        snapshot(null)
+
         getLocationUpdates()
         startLocationUpdates()
         setOnMarkerClickListener()
     }
 
-    // 連接資料庫取得位置資訊
+    // 取得使用者定位位置更新
     private fun getLocationUpdates() {
         locationRequest = LocationRequest()
         locationRequest.interval = 500
@@ -145,23 +149,20 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             override fun onLocationResult(locationResult: LocationResult) {
                 if (locationResult.locations.isNotEmpty()) {
                     super.onLocationResult(locationResult)
-
-                    // 建立預設地圖(非追蹤)
-                    snapshot(null)
                 }
             }
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_CHECK_SETTINGS) {
-            if (resultCode == Activity.RESULT_OK) {
-                locationUpdateState = true
-                startLocationUpdates()
-            }
-        }
-    }
+//    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+//        super.onActivityResult(requestCode, resultCode, data)
+//        if (requestCode == REQUEST_CHECK_SETTINGS) {
+//            if (resultCode == Activity.RESULT_OK) {
+//                locationUpdateState = true
+//                startLocationUpdates()
+//            }
+//        }
+//    }
 
     // 取得最新資訊後開始更新資料
     private fun startLocationUpdates() {
@@ -190,9 +191,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
 
         // 設定資料庫搜尋條件，預設是回傳所有資料，如果有id就回傳carId相同的資料
-        var query = db.collection("carInfo").whereNotEqualTo("carId", null)
-        if (id != null) {
-            query = db.collection("carInfo").whereEqualTo("carId", "$id")
+        var query = if (id == null) {
+            db.collection("carInfo").whereNotEqualTo("carId", null)
+        } else {
+            db.collection("carInfo").whereEqualTo("carId", "$id")
         }
 
         // 建立Listener
