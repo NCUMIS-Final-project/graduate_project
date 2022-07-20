@@ -18,10 +18,8 @@ package com.example.graduate_project
 
 
 import android.Manifest
-import android.app.Activity
 import android.content.ContentValues.TAG
 import android.content.DialogInterface
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
@@ -46,6 +44,7 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.firebase.firestore.*
 import java.util.*
+
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
 
@@ -77,6 +76,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         @get: PropertyName("licensePlateNum") @set: PropertyName("licensePlateNum") var licensePlateNum:
         String? = null,
         @get: PropertyName("HighSusTime") @set: PropertyName("HighSusTime") var HighSusTime: Int? = null
+    )
+
+    data class Driver(
+        @get: PropertyName("name") @set: PropertyName("name") var name: String? = "",
+        @get: PropertyName("drunken") @set: PropertyName("drunken") var drunken: Int? = null
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -232,26 +236,44 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 .addOnSuccessListener { document ->
                     if (document != null) {
                         var car = document.toObject(MapsActivity.Car::class.java)
-                        val dialog = BottomSheetDialog(this)
-//                        val dialog = BottomSheetDialog(this,R.style,R.layout.layout_bottom_sheet)
-//                        val dialog = BottomSheetDialog(this,R.style,R.style.bottomsheet)
-                        val view = layoutInflater.inflate(R.layout.layout_bottom_sheet, null)
-                        val license = view.findViewById<TextView>(R.id.textView)
-                        val sus = view.findViewById<TextView>(R.id.textView2)
-                        if (car != null) {
-                            license.text = "${car.licensePlateNum}"
-                            sus.text = "高度疑似酒駕次數為${car.HighSusTime}次"
+                        db.collection("driver").document("${id}").get()
+                            .addOnSuccessListener { document ->
+                                if (document != null) {
+                                    var driver = document.toObject(MapsActivity.Driver::class.java)
+                                    val dialog = BottomSheetDialog(this)
+                                    //val dialog = BottomSheetDialog(this,R.style,R.layout.layout_bottom_sheet)
+                                    //val dialog = BottomSheetDialog(this,R.style,R.style.bottomsheet)
+                                    val view = layoutInflater.inflate(R.layout.layout_bottom_sheet, null)
+                                    val license = view.findViewById<TextView>(R.id.textView)
+                                    val sus = view.findViewById<TextView>(R.id.textView2)
+                                    if (car != null) {
+                                        license.text = "${car.licensePlateNum}"
+                                        if (driver != null) {
+                                            sus.text = "酒駕次數為${driver.drunken}次"
+                                        }
 
-                            // 進入clickedMarkerId的追蹤畫面
-                            registration!!.remove()
-                            snapshot(clickedMarkerId)
-                        }
-                        dialog.setContentView(view)
-                        dialog.show()
-                        val submit = view.findViewById<View>(R.id.button2) as Button
-                        submit.setOnClickListener {
-                            comfirm_dialog()
-                        }
+                                        // 進入clickedMarkerId的追蹤畫面
+                                        registration!!.remove()
+                                        snapshot(clickedMarkerId)
+                                    }
+                                    dialog.setContentView(view)
+                                    dialog.setCanceledOnTouchOutside(false)
+                                    dialog.show()
+                                    val submit = view.findViewById<View>(R.id.button2) as Button
+                                    submit.setOnClickListener {
+                                        comfirm_dialog(dialog)
+                                    }
+                                    val submit2 = view.findViewById<View>(R.id.button3) as Button
+                                    submit2.setOnClickListener {
+                                        val docRef = db.collection("carInfo").document("$id")
+                                        docRef.update("carStatus", 3)
+                                    }
+                                } else {
+                                    Log.d(TAG, "No such document")
+                                }
+                            }.addOnFailureListener { exception ->
+                                Log.d(TAG, "get failed with ", exception)
+                            }
                     } else {
                         Log.d(TAG, "No such document")
                     }
@@ -330,7 +352,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     override fun onMarkerClick(p0: Marker?) = false
 
-    private fun comfirm_dialog() {
+    private fun comfirm_dialog(bottomsheet: BottomSheetDialog) {
         AlertDialog.Builder(this)
             .setMessage("是否確認退出追蹤模式")
             .setCancelable(false)
@@ -340,6 +362,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 // 退出追蹤模式
                 registration!!.remove()
                 snapshot(null)
+                bottomsheet.dismiss()
             })
             .setNegativeButton("取消", DialogInterface.OnClickListener { dialog, id ->
                 dialog.cancel()
