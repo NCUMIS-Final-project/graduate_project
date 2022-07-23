@@ -97,6 +97,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         super.onCreate(savedInstanceState)
         binding = ActivityMapsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        //連網設定之一
         if(android.os.Build.VERSION.SDK_INT>9){
             val policy = ThreadPolicy.Builder().permitAll().build()
             StrictMode.setThreadPolicy(policy)
@@ -250,7 +252,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 .addOnSuccessListener { document ->
                     if (document != null) {
                         var car = document.toObject(MapsActivity.Car::class.java)
+                        //合成direction api所需ㄉUrl
                         val url= car!!.gpsLocation?.let { getURL(it) }
+                        //根據得到的Url繪製路線
                         if (url != null) {
                             draw_route(url)
                         }
@@ -417,7 +421,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     }
 
     fun draw_route(url:String){
-        val response = get_route(url)
+        val response = get_route(url) //根據Url呼叫get_route以得到路徑
         val data = response.peekBody(4194304)!!.string()
         val result = ArrayList<List<LatLng>>()
         try{
@@ -437,6 +441,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             e.printStackTrace()
         }
         val lineoption = PolylineOptions()
+
+        //路徑的設定和繪製
         for (i in result.indices){
             lineoption.addAll(result[i])
             lineoption.width(10f)
