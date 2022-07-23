@@ -21,8 +21,12 @@ import android.Manifest
 import android.content.ContentValues.TAG
 import android.content.DialogInterface
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.location.Location
+import android.os.AsyncTask
 import android.os.Bundle
+import android.os.StrictMode
+import android.os.StrictMode.ThreadPolicy
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -37,12 +41,14 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Marker
-import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.*
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.firebase.firestore.*
+import com.google.gson.Gson
+import com.google.protobuf.Parser
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import java.lang.Exception
 import java.util.*
 
 
@@ -60,6 +66,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     var hashMapMarker: HashMap<String, Marker> = HashMap()
     private var registration: ListenerRegistration? = null
     private var clickedMarkerId: String? = null
+    // 測試用座標
+    private val ncu = LatLng(24.9714, 121.1945)
+    //var directionsService = DirectionsService()
+    //var directionsDisplay = DirectionsRenderer()
 
     companion object {
         private const val LOCATION_REQUEST_CODE = 1
@@ -87,6 +97,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         super.onCreate(savedInstanceState)
         binding = ActivityMapsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        if(android.os.Build.VERSION.SDK_INT>9){
+            val policy = ThreadPolicy.Builder().permitAll().build()
+            StrictMode.setThreadPolicy(policy)
+        }
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
@@ -125,7 +139,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 lastLocation = location
 
                 // 測試用座標
-                val ncu = LatLng(24.9714, 121.1945)
+                //val ncu = LatLng(24.9714, 121.1945)
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(ncu, 15f))
 
                 /**目前定位位置，實際運作用這個
@@ -236,6 +250,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 .addOnSuccessListener { document ->
                     if (document != null) {
                         var car = document.toObject(MapsActivity.Car::class.java)
+                        val url= car!!.gpsLocation?.let { getURL(it) }
+                        if (url != null) {
+                            draw_route(url)
+                        }
                         db.collection("driver").document("${id}").get()
                             .addOnSuccessListener { document ->
                                 if (document != null) {
@@ -381,6 +399,52 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             getLocationUpdates()
         }
     }
+    fun testtest(url:String):Response {
+        val client: OkHttpClient = OkHttpClient().newBuilder()
+            .build()
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .build()
+        val response: Response = client.newCall(request).execute()
+        return response
+    }
 
+    fun getURL(gpsLocation: GeoPoint):String{
+        val lng = gpsLocation.let { LatLng(it.latitude, it.longitude) }
+        return "https://maps.googleapis.com/maps/api/directions/json?origin=${ncu.latitude},${ncu.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
+    }
+
+    fun draw_route(url:String){
+        val response = testtest(url)
+        val data = response.peekBody(4194304)!!.string()
+        val result = ArrayList<List<LatLng>>()
+        try{
+            val respObj = Gson().fromJson(data,GoogleMapDTO::class.java)
+            val path = ArrayList<LatLng>()
+
+            for (i in 0..(respObj.routes[0].legs[0].steps.size-1)){
+                val startLatLng = LatLng(respObj.routes[0].legs[0].steps[i].start_location.lat.toDouble(),
+                    respObj.routes[0].legs[0].steps[i].start_location.lng.toDouble())
+                path.add(startLatLng)
+                val endLatLng = LatLng(respObj.routes[0].legs[0].steps[i].end_location.lat.toDouble(),
+                    respObj.routes[0].legs[0].steps[i].end_location.lng.toDouble())
+                path.add(endLatLng)
+            }
+            result.add(path)
+        }catch (e:Exception){
+            e.printStackTrace()
+        }
+        val lineoption = PolylineOptions()
+        for (i in result.indices){
+            lineoption.addAll(result[i])
+            lineoption.width(10f)
+            lineoption.color(Color.BLUE)
+            lineoption.geodesic(true)
+        }
+        mMap.addPolyline(lineoption)
+    }
 }
+
+
 
