@@ -381,6 +381,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 registration!!.remove()
                 snapshot(null)
                 bottomsheet.dismiss()
+                mMap.clear()
             })
             .setNegativeButton("取消", DialogInterface.OnClickListener { dialog, id ->
                 dialog.cancel()
@@ -399,7 +400,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             getLocationUpdates()
         }
     }
-    fun testtest(url:String):Response {
+    fun get_route(url:String):Response {
         val client: OkHttpClient = OkHttpClient().newBuilder()
             .build()
         val request = Request.Builder()
@@ -416,7 +417,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     }
 
     fun draw_route(url:String){
-        val response = testtest(url)
+        val response = get_route(url)
         val data = response.peekBody(4194304)!!.string()
         val result = ArrayList<List<LatLng>>()
         try{
