@@ -244,7 +244,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     }
 
     private fun setOnMarkerClickListener() {
+
         mMap.setOnMarkerClickListener { marker ->
+            mMap.clear()
             val id = marker.title
             clickedMarkerId = id
 
@@ -262,9 +264,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                             .addOnSuccessListener { document ->
                                 if (document != null) {
                                     var driver = document.toObject(MapsActivity.Driver::class.java)
+                                    val dialog = BottomSheetDialog(this,R.style.DialogTranparent)
+/**                                    // 另一種設定背景為透明的方法
                                     val dialog = BottomSheetDialog(this)
-                                    //val dialog = BottomSheetDialog(this,R.style,R.layout.layout_bottom_sheet)
-                                    //val dialog = BottomSheetDialog(this,R.style,R.style.bottomsheet)
+                                    val window: Window? = dialog.window
+                                    window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+                                    window?.setDimAmount(0.0f)*/
                                     val view = layoutInflater.inflate(R.layout.layout_bottom_sheet, null)
                                     val license = view.findViewById<TextView>(R.id.textView)
                                     val sus = view.findViewById<TextView>(R.id.textView2)
@@ -279,7 +284,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                                         snapshot(clickedMarkerId)
                                     }
                                     dialog.setContentView(view)
-                                    dialog.setCanceledOnTouchOutside(false)
+//                                    dialog.setCanceledOnTouchOutside(false)
                                     dialog.show()
                                     val submit = view.findViewById<View>(R.id.button2) as Button
                                     submit.setOnClickListener {
@@ -417,7 +422,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     fun getURL(gpsLocation: GeoPoint):String{
         val lng = gpsLocation.let { LatLng(it.latitude, it.longitude) }
-        return "https://maps.googleapis.com/maps/api/directions/json?origin=${ncu.latitude},${ncu.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
+        return "https://maps.googleapis.com/maps/api/directions/json?origin=${lastLocation.latitude},${lastLocation.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
+//        return "https://maps.googleapis.com/maps/api/directions/json?origin=${ncu.latitude},${ncu.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
     }
 
     fun draw_route(url:String){
