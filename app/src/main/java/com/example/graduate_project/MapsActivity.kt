@@ -18,8 +18,10 @@ package com.example.graduate_project
 
 
 import android.Manifest
+import android.app.Activity
 import android.content.ContentValues.TAG
 import android.content.DialogInterface
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.location.Location
@@ -28,12 +30,14 @@ import android.os.Bundle
 import android.os.StrictMode
 import android.os.StrictMode.ThreadPolicy
 import android.util.Log
+import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import com.example.graduate_project.databinding.ActivityMapsBinding
 import com.google.android.gms.location.*
@@ -42,6 +46,7 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.firebase.firestore.*
 import com.google.gson.Gson
@@ -66,6 +71,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     var hashMapMarker: HashMap<String, Marker> = HashMap()
     private var registration: ListenerRegistration? = null
     private var clickedMarkerId: String? = null
+    private lateinit var bottomSheetBehavior: BottomSheetBehavior<ConstraintLayout>
+
     // 測試用座標
     private val ncu = LatLng(24.9714, 121.1945)
     //var directionsService = DirectionsService()
@@ -154,6 +161,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         registration?.remove()
         snapshot(null)
 
+        // 取得使用者位置、建立地圖
         getLocationUpdates()
         startLocationUpdates()
         setOnMarkerClickListener()
@@ -174,15 +182,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
     }
 
-//    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-//        super.onActivityResult(requestCode, resultCode, data)
-//        if (requestCode == REQUEST_CHECK_SETTINGS) {
-//            if (resultCode == Activity.RESULT_OK) {
-//                locationUpdateState = true
-//                startLocationUpdates()
-//            }
-//        }
-//    }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CHECK_SETTINGS) {
+            if (resultCode == Activity.RESULT_OK) {
+                locationUpdateState = true
+                startLocationUpdates()
+            }
+        }
+    }
 
     // 取得最新資訊後開始更新資料
     private fun startLocationUpdates() {
@@ -202,15 +210,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
     }
 
-    // 根據是否傳入id判斷建立哪種Listener
-    private fun snapshot(id: String?) {
 
-        // 每次切換模式都先移除所有Marker
+    private fun snapshot(id: String?) {
+    // id == null >> 顯示所有marker
+    // id != null >> 追蹤模式，顯示單一marker
+
+        // 先移除所有Marker
         for (marker in hashMapMarker) {
             marker.value.remove()
         }
 
-        // 設定資料庫搜尋條件，預設是回傳所有資料，如果有id就回傳carId相同的資料
+        // 設定資料庫搜尋條件
         var query = if (id == null) {
             db.collection("carInfo").whereNotEqualTo("carId", null)
         } else {
@@ -238,20 +248,24 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                         }
                     }
                 }
+                // marker顯示設定
                 markerManagement(car, dc)
             }
         }
     }
 
     private fun setOnMarkerClickListener() {
-
+        // 建立資訊視窗
+        val bottomSheetLayout = findViewById<ConstraintLayout>(R.id.layoutBottomSheet)
+        bottomSheetBehavior = BottomSheetBehavior.from(bottomSheetLayout)
+        mMap.clear()
         mMap.setOnMarkerClickListener { marker ->
-            mMap.clear()
             val id = marker.title
             clickedMarkerId = id
 
             db.collection("carInfo").document("${id}").get()
                 .addOnSuccessListener { document ->
+
                     if (document != null) {
                         var car = document.toObject(MapsActivity.Car::class.java)
                         //合成direction api所需ㄉUrl
@@ -262,38 +276,35 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                         }
                         db.collection("driver").document("${id}").get()
                             .addOnSuccessListener { document ->
+
                                 if (document != null) {
                                     var driver = document.toObject(MapsActivity.Driver::class.java)
-                                    val dialog = BottomSheetDialog(this,R.style.DialogTranparent)
-/**                                    // 另一種設定背景為透明的方法
-                                    val dialog = BottomSheetDialog(this)
-                                    val window: Window? = dialog.window
-                                    window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-                                    window?.setDimAmount(0.0f)*/
-                                    val view = layoutInflater.inflate(R.layout.layout_bottom_sheet, null)
-                                    val license = view.findViewById<TextView>(R.id.textView)
-                                    val sus = view.findViewById<TextView>(R.id.textView2)
-                                    if (car != null) {
-                                        license.text = "${car.licensePlateNum}"
-                                        if (driver != null) {
-                                            sus.text = "酒駕次數為${driver.drunken}次"
-                                        }
+                                    val license = bottomSheetLayout.findViewById<TextView>(R.id.textView)
+                                    val sus = bottomSheetLayout.findViewById<TextView>(R.id.textView2)
 
+                                    if (car != null) {
+                                        // 設定資訊視窗內容
+                                        license.text = car.licensePlateNum
+                                        sus.text = "酒駕次數為${driver!!.drunken}次"
+                                        // 顯示資訊視窗
+                                        if (bottomSheetBehavior?.state != BottomSheetBehavior.STATE_EXPANDED) {
+                                            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_EXPANDED
+                                        } else {
+                                            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_COLLAPSED
+                                        }
                                         // 進入clickedMarkerId的追蹤畫面
                                         registration!!.remove()
                                         snapshot(clickedMarkerId)
                                     }
-                                    dialog.setContentView(view)
-//                                    dialog.setCanceledOnTouchOutside(false)
-                                    dialog.show()
-                                    val submit = view.findViewById<View>(R.id.button2) as Button
+                                    val submit = bottomSheetLayout.findViewById<View>(R.id.button2) as Button
                                     submit.setOnClickListener {
-                                        comfirm_dialog(dialog)
+                                        comfirmDialog(null)
                                     }
-                                    val submit2 = view.findViewById<View>(R.id.button3) as Button
+                                    val submit2 = bottomSheetLayout.findViewById<View>(R.id.button3) as Button
                                     submit2.setOnClickListener {
                                         val docRef = db.collection("carInfo").document("$id")
                                         docRef.update("carStatus", 3)
+                                        comfirmDialog(3)
                                     }
                                 } else {
                                     Log.d(TAG, "No such document")
@@ -379,18 +390,26 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     override fun onMarkerClick(p0: Marker?) = false
 
-    private fun comfirm_dialog(bottomsheet: BottomSheetDialog) {
+    private fun comfirmDialog(mode : Int?) {
+        // mode == null >> "退出追蹤模式"的訊息
+        // mode == 3    >> "狀態改為安全"的訊息
+        var message = ""
+        if (mode == null){
+            message = "確認退出追蹤模式？"
+        } else if (mode == 3){
+            message = "確認將車輛狀態改為安全？"
+        }
         AlertDialog.Builder(this)
-            .setMessage("是否確認退出追蹤模式")
+            .setMessage(message)
             .setCancelable(false)
             .setPositiveButton("確認", DialogInterface.OnClickListener { dialog, id ->
-                Toast.makeText(this, "退出追蹤模式測試", Toast.LENGTH_SHORT).show()
-
                 // 退出追蹤模式
                 registration!!.remove()
                 snapshot(null)
-                bottomsheet.dismiss()
                 mMap.clear()
+                if (bottomSheetBehavior?.state == BottomSheetBehavior.STATE_EXPANDED) {
+                    bottomSheetBehavior?.state = BottomSheetBehavior.STATE_COLLAPSED
+                }
             })
             .setNegativeButton("取消", DialogInterface.OnClickListener { dialog, id ->
                 dialog.cancel()
@@ -422,8 +441,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     fun getURL(gpsLocation: GeoPoint):String{
         val lng = gpsLocation.let { LatLng(it.latitude, it.longitude) }
-        return "https://maps.googleapis.com/maps/api/directions/json?origin=${lastLocation.latitude},${lastLocation.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
-//        return "https://maps.googleapis.com/maps/api/directions/json?origin=${ncu.latitude},${ncu.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
+//        return "https://maps.googleapis.com/maps/api/directions/json?origin=${lastLocation.latitude},${lastLocation.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
+        return "https://maps.googleapis.com/maps/api/directions/json?origin=${ncu.latitude},${ncu.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
     }
 
     fun draw_route(url:String){
