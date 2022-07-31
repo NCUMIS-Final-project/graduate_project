@@ -212,8 +212,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
 
     private fun snapshot(id: String?) {
-    // id == null >> 顯示所有marker
-    // id != null >> 追蹤模式，顯示單一marker
+        // id == null >> 顯示所有marker
+        // id != null >> 追蹤模式，顯示單一marker
 
         // 先移除所有Marker
         for (marker in hashMapMarker) {
@@ -441,7 +441,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     fun getURL(gpsLocation: GeoPoint):String{
         val lng = gpsLocation.let { LatLng(it.latitude, it.longitude) }
-//        return "https://maps.googleapis.com/maps/api/directions/json?origin=${lastLocation.latitude},${lastLocation.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
         return "https://maps.googleapis.com/maps/api/directions/json?origin=${ncu.latitude},${ncu.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
     }
 
@@ -454,12 +453,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             val path = ArrayList<LatLng>()
 
             for (i in 0..(respObj.routes[0].legs[0].steps.size-1)){
-                val startLatLng = LatLng(respObj.routes[0].legs[0].steps[i].start_location.lat.toDouble(),
-                    respObj.routes[0].legs[0].steps[i].start_location.lng.toDouble())
-                path.add(startLatLng)
-                val endLatLng = LatLng(respObj.routes[0].legs[0].steps[i].end_location.lat.toDouble(),
-                    respObj.routes[0].legs[0].steps[i].end_location.lng.toDouble())
-                path.add(endLatLng)
+                path.addAll(decodePolyline(respObj.routes[0].legs[0].steps[i].polyline.points))
             }
             result.add(path)
         }catch (e:Exception){
@@ -476,7 +470,39 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
         mMap.addPolyline(lineoption)
     }
+
+    fun decodePolyline(encoded:String):List<LatLng>{
+        val poly = ArrayList<LatLng>()
+        var index = 0
+        val len = encoded.length
+        var lat = 0
+        var lng = 0
+
+        while (index < len){
+            var b:Int
+            var shift = 0
+            var result = 0
+            do{
+                b = encoded[index++].code - 63
+                result = result or (b and 0x1f shl shift)
+                shift += 5
+            }while (b >= 0x20)
+            val dlat = if (result and 1 !=0) (result shr 1).inv() else result shr 1
+            lat += dlat
+
+            shift = 0
+            result = 0
+            do{
+                b = encoded[index++].code - 63
+                result = result or (b and 0x1f shl shift)
+                shift += 5
+            }while(b >= 0x20)
+            val dlng = if (result and 1 !=0)(result shr 1).inv() else result shr 1
+            lng += dlng
+
+            val latLng = LatLng((lat.toDouble() / 1E5),(lng.toDouble() / 1E5))
+            poly.add(latLng)
+        }
+        return poly
+    }
 }
-
-
-
