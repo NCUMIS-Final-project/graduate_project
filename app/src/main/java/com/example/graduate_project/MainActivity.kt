@@ -4,6 +4,7 @@ package com.example.graduate_project
 import android.content.ContentValues.TAG
 import android.content.Intent
 import android.os.Bundle
+import android.text.method.HideReturnsTransformationMethod
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -30,8 +31,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         /** 略過登入，直接跳轉到地圖*/
-        val intent = Intent(this, MapsActivity::class.java)
-        startActivity(intent)
+//        val intent = Intent(this, MapsActivity::class.java)
+//        startActivity(intent)
 
         var user_account: TextView = findViewById<TextView>(R.id.et2)
         var user_password: TextView = findViewById<TextView>(R.id.et3)

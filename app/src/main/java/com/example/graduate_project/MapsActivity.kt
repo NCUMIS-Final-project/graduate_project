@@ -23,18 +23,18 @@ import android.content.ContentValues.TAG
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.ColorFilter
 import android.location.Location
-import android.os.AsyncTask
 import android.os.Bundle
 import android.os.StrictMode
 import android.os.StrictMode.ThreadPolicy
 import android.util.Log
-import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -47,12 +47,9 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.firebase.firestore.*
 import com.google.gson.Gson
-import com.google.protobuf.Parser
 import okhttp3.*
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.lang.Exception
 import java.util.*
 
@@ -74,7 +71,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<ConstraintLayout>
 
     // 測試用座標
-    private val ncu = LatLng(24.9714, 121.1945)
+    private val ncu = LatLng(24.9683, 121.1955)
     //var directionsService = DirectionsService()
     //var directionsDisplay = DirectionsRenderer()
 
@@ -148,13 +145,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 lastLocation = location
 
                 // 測試用座標
-                //val ncu = LatLng(24.9714, 121.1945)
+                val ncu = LatLng(24.9714, 121.1945)
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(ncu, 15f))
 
-                /**目前定位位置，實際運作用這個
-                val currentLatLng = GeoPoint(location.latitude, location.longitude)
-                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
-                 **/
+                //目前定位位置，實際運作用這個
+//                var lastLatLng = location?.let { LatLng(it.latitude,it.longitude) }
+//                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(lastLatLng, 15f))
+
             }
         }
         // 建立預設地圖(非追蹤)
@@ -323,13 +320,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
     }
 
+    private fun resizeIcon(id: Int): Bitmap {
+        var size = 55
+        var resource = BitmapFactory.decodeResource(resources, id)
+        return Bitmap.createScaledBitmap(resource, size, size, false)
+    }
+
     // 放置 marker
     private fun placeMarkerOnMap(car: Car) {
-        var icon = R.drawable.dot_0
+        var icon = resizeIcon(R.drawable.dot_0)
         if (car.carStatus == 1) {
-            icon = R.drawable.dot_1
+            icon = resizeIcon(R.drawable.dot_1)
         } else if (car.carStatus == 2) {
-            icon = R.drawable.dot_2
+            icon = resizeIcon(R.drawable.dot_2)
         }
 
         //若車輛狀態不為良好
@@ -339,7 +342,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 MarkerOptions()
                     .position(lng)
                     .title(car.carId)
-                    .icon(BitmapDescriptorFactory.fromResource(icon))
+                    .icon(BitmapDescriptorFactory.fromBitmap(icon))
+//                    .icon(BitmapDescriptorFactory.fromResource(icon))
             ).also { marker = it }
             hashMapMarker[car.carId!!] = marker
         }
@@ -442,6 +446,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     fun getURL(gpsLocation: GeoPoint):String{
         val lng = gpsLocation.let { LatLng(it.latitude, it.longitude) }
         return "https://maps.googleapis.com/maps/api/directions/json?origin=${ncu.latitude},${ncu.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
+//        return "https://maps.googleapis.com/maps/api/directions/json?origin=${lastLocation.latitude},${lastLocation.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
     }
 
     fun draw_route(url:String){

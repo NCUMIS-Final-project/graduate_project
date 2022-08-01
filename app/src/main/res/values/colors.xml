@@ -6,7 +6,11 @@
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
     <color name="bm_background">#B7EFB3</color>
     <color name="bm2_background">#C1FFE4</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="background_gray">#BFC0C0</color>
+    <color name="heavy_blue">#2D3142</color>
+    <color name="light_blue">#4F5D75</color>
+    <color name="strong_purple">#635068</color>
 </resources>

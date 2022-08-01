@@ -6,102 +6,99 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        tools:ignore="MissingConstraints">
 
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="75dp" />
-
-        <LinearLayout
+        <ImageView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_gravity="center">
+            android:scaleType="centerCrop"
+            android:adjustViewBounds="true"
+            android:layout_weight="0"
+            android:src="@drawable/login_page3"/>
 
-            <ImageView
-                android:id="@+id/imageView"
-                android:layout_width="wrap_content"
-                android:layout_height="100dp"
-                app:srcCompat="@drawable/android"
-                android:scaleType="centerInside"/>
-        </LinearLayout>
 
-        <Space
+        <TextView
+            android:id="@+id/welcome_message"
+            style="@style/graduate_topic"
             android:layout_width="match_parent"
-            android:layout_height="40dp" />
-
-        <LinearLayout
-            android:layout_width="300dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
+            android:text="Welcome 歡迎" />
+<!--        <Space-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="125dp"-->
+<!--            tools:ignore="MissingConstraints" />-->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
+            <ImageView
                 android:id="@+id/Textview2"
-                android:layout_width="wrap_content"
-                android:layout_height="50dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:layout_weight="1"
                 android:gravity="center_horizontal"
-                android:text="帳號  ："
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:src="@drawable/account"/>
 
             <EditText
                 android:id="@+id/et2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_margin="10dp"
+                android:hint="account"
                 android:ems="10"
-                android:inputType="text" />
+                android:inputType="textVisiblePassword" />
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="300dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
+            <ImageView
                 android:id="@+id/textView3"
-                android:layout_width="wrap_content"
-                android:layout_height="50dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:layout_weight="1"
                 android:gravity="center_horizontal"
-                android:text="密碼  ："
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:src="@drawable/password" />
 
             <EditText
                 android:id="@+id/et3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_margin="10dp"
+                android:hint="password"
                 android:ems="10"
-                android:inputType="text" />
+                android:inputType="textPassword" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="100dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_gravity="center">
+            android:layout_gravity="center"
+            android:orientation="horizontal">
 
             <Button
                 android:id="@+id/button"
                 android:layout_width="wrap_content"
-                android:layout_height="50dp"
+                android:layout_height="wrap_content"
+                android:text="Login"
                 android:layout_weight="1"
-                android:background="@color/bm_background"
-                android:text="登入"
-                android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-                android:textColor="#000000"
-                app:backgroundTint="@null" />
+                style="@style/graduate_btn" />
 
         </LinearLayout>
-
-
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
+
