@@ -321,18 +321,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     }
 
     private fun resizeIcon(id: Int): Bitmap {
-        var size = 55
+        var size = 65
         var resource = BitmapFactory.decodeResource(resources, id)
         return Bitmap.createScaledBitmap(resource, size, size, false)
     }
 
     // 放置 marker
     private fun placeMarkerOnMap(car: Car) {
-        var icon = resizeIcon(R.drawable.dot_0)
+        var icon = resizeIcon(R.drawable.button)
         if (car.carStatus == 1) {
-            icon = resizeIcon(R.drawable.dot_1)
+            icon = resizeIcon(R.drawable.marker1)
         } else if (car.carStatus == 2) {
-            icon = resizeIcon(R.drawable.dot_2)
+            icon = resizeIcon(R.drawable.marker2)
         }
 
         //若車輛狀態不為良好
@@ -369,7 +369,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             if (car.carStatus == 1) {
                 if (marker != null) {
                     marker?.isVisible = true
-                    marker?.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_1))
+                    marker?.setIcon(BitmapDescriptorFactory.fromBitmap(resizeIcon(R.drawable.marker1)))
                 } else {
                     placeMarkerOnMap(car)
                 }
@@ -379,7 +379,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             if (car.carStatus == 2) {
                 if (marker != null) {
                     marker?.isVisible = true
-                    marker?.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.dot_2))
+                    marker?.setIcon(BitmapDescriptorFactory.fromBitmap(resizeIcon(R.drawable.marker2)))
                 } else {
                     placeMarkerOnMap(car)
                 }
