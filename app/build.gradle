@@ -57,5 +57,8 @@ dependencies {
     // bottomsheet
     implementation('com.google.android.material:material:1.2.0-alpha02')
     implementation('com.makeramen:roundedimageview:2.3.0')
+    // recyclerView
+    implementation "androidx.recyclerview:recyclerview:1.1.0"
+    implementation "androidx.recyclerview:recyclerview-selection:1.1.0-rc02"
 
 }

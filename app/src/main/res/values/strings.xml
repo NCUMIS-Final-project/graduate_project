@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">Graduate_project</string>
     <string name="title_activity_maps">MapsActivity</string>
+    <string name="default_plateNum">查無此車牌</string>
+    <string name="default_records">無酒駕紀錄</string>
+    <string name="header_value">酒測值</string>
+    <string name="header_time">酒測時間</string>
+    <string name="button_great">狀態良好</string>
+    <string name="button_exit">退出追蹤模式</string>
 </resources>

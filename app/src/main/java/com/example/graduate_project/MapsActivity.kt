@@ -17,6 +17,7 @@ package com.example.graduate_project
  *  */
 
 
+import MyAdapter
 import android.Manifest
 import android.app.Activity
 import android.content.ContentValues.TAG
@@ -26,25 +27,23 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
-import android.graphics.ColorFilter
 import android.location.Location
 import android.os.Bundle
 import android.os.StrictMode
 import android.os.StrictMode.ThreadPolicy
 import android.util.Log
 import android.view.View
-import android.widget.Button
-import android.widget.TextView
+import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.graduate_project.databinding.ActivityMapsBinding
 import com.google.android.gms.location.*
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.*
+
 import com.google.android.gms.maps.model.*
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.firebase.firestore.*
@@ -52,7 +51,6 @@ import com.google.gson.Gson
 import okhttp3.*
 import java.lang.Exception
 import java.util.*
-
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
 
@@ -67,8 +65,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private var db = FirebaseFirestore.getInstance()
     var hashMapMarker: HashMap<String, Marker> = HashMap()
     private var registration: ListenerRegistration? = null
-    private var clickedMarkerId: String? = null
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<ConstraintLayout>
+
 
     // 測試用座標
     private val ncu = LatLng(24.9683, 121.1955)
@@ -97,13 +95,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         @get: PropertyName("drunken") @set: PropertyName("drunken") var drunken: Int? = null
     )
 
+    data class Record(
+        @get: PropertyName("value") @set: PropertyName("value") var value: Float? = null,
+        @get: PropertyName("time") @set: PropertyName("time") var time: Date? = null
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMapsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         //連網設定之一
-        if(android.os.Build.VERSION.SDK_INT>9){
+        if (android.os.Build.VERSION.SDK_INT > 9) {
             val policy = ThreadPolicy.Builder().permitAll().build()
             StrictMode.setThreadPolicy(policy)
         }
@@ -112,6 +115,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
     }
 
@@ -209,8 +214,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
 
     private fun snapshot(id: String?) {
-        // id == null >> 顯示所有marker
-        // id != null >> 追蹤模式，顯示單一marker
+        /**     id == null >> 顯示所有marker
+                id != null >> 追蹤模式，顯示單一marker   */
 
         // 先移除所有Marker
         for (marker in hashMapMarker) {
@@ -255,60 +260,68 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         // 建立資訊視窗
         val bottomSheetLayout = findViewById<ConstraintLayout>(R.id.layoutBottomSheet)
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheetLayout)
+
+        // 建立酒駕紀錄視窗
+        val recordListView = findViewById<View>(R.id.record_list)
+        recordListView.visibility = View.GONE
+
+        // 連結畫面元件
+        val license = bottomSheetLayout.findViewById<TextView>(R.id.textView)
+        val sus = bottomSheetLayout.findViewById<TextView>(R.id.textView2)
+        val submit = bottomSheetLayout.findViewById<View>(R.id.button2) as Button
+        val submit2 = bottomSheetLayout.findViewById<View>(R.id.button3) as Button
+
         mMap.clear()
         mMap.setOnMarkerClickListener { marker ->
+
             val id = marker.title
-            clickedMarkerId = id
+            recordList(id)
+
+            val openList =
+                bottomSheetLayout.findViewById<View>(R.id.openListBtn) as ImageButton
+            openList.setOnClickListener {
+                if (recordListView.visibility == View.VISIBLE) {
+                    recordListView.visibility = View.GONE
+                    openList.setImageResource(R.drawable.up_arrow)
+                } else {
+                    recordListView.visibility = View.VISIBLE
+                    openList.setImageResource(R.drawable.down_arrow)
+                }
+            }
 
             db.collection("carInfo").document("${id}").get()
                 .addOnSuccessListener { document ->
 
                     if (document != null) {
+
                         var car = document.toObject(MapsActivity.Car::class.java)
                         //合成direction api所需ㄉUrl
-                        val url= car!!.gpsLocation?.let { getURL(it) }
+                        val url = car!!.gpsLocation?.let { getURL(it) }
                         //根據得到的Url繪製路線
                         if (url != null) {
                             draw_route(url)
                         }
-                        db.collection("driver").document("${id}").get()
-                            .addOnSuccessListener { document ->
 
-                                if (document != null) {
-                                    var driver = document.toObject(MapsActivity.Driver::class.java)
-                                    val license = bottomSheetLayout.findViewById<TextView>(R.id.textView)
-                                    val sus = bottomSheetLayout.findViewById<TextView>(R.id.textView2)
+                        // 設定資訊視窗
+                        license.text = car.licensePlateNum
+                        sus.text = "酒駕次數為${car.HighSusTime}次"
+                        // 顯示資訊視窗
+                        if (bottomSheetBehavior?.state != BottomSheetBehavior.STATE_EXPANDED) {
+                            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_EXPANDED
+                        } else {
+                            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_COLLAPSED
+                        }
+                        // 進入id的追蹤畫面
+                        registration!!.remove()
+                        snapshot(id)
+                        submit.setOnClickListener {
+                            confirmDialog(null)
+                        }
 
-                                    if (car != null) {
-                                        // 設定資訊視窗內容
-                                        license.text = car.licensePlateNum
-                                        sus.text = "酒駕次數為${driver!!.drunken}次"
-                                        // 顯示資訊視窗
-                                        if (bottomSheetBehavior?.state != BottomSheetBehavior.STATE_EXPANDED) {
-                                            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_EXPANDED
-                                        } else {
-                                            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_COLLAPSED
-                                        }
-                                        // 進入clickedMarkerId的追蹤畫面
-                                        registration!!.remove()
-                                        snapshot(clickedMarkerId)
-                                    }
-                                    val submit = bottomSheetLayout.findViewById<View>(R.id.button2) as Button
-                                    submit.setOnClickListener {
-                                        comfirmDialog(null)
-                                    }
-                                    val submit2 = bottomSheetLayout.findViewById<View>(R.id.button3) as Button
-                                    submit2.setOnClickListener {
-                                        val docRef = db.collection("carInfo").document("$id")
-                                        docRef.update("carStatus", 3)
-                                        comfirmDialog(3)
-                                    }
-                                } else {
-                                    Log.d(TAG, "No such document")
-                                }
-                            }.addOnFailureListener { exception ->
-                                Log.d(TAG, "get failed with ", exception)
-                            }
+                        submit2.setOnClickListener {
+                            confirmDialog(3)
+                        }
+
                     } else {
                         Log.d(TAG, "No such document")
                     }
@@ -394,31 +407,42 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     override fun onMarkerClick(p0: Marker?) = false
 
-    private fun comfirmDialog(mode : Int?) {
+    private fun confirmDialog(id: Int?) {
         // mode == null >> "退出追蹤模式"的訊息
         // mode == 3    >> "狀態改為安全"的訊息
-        var message = ""
-        if (mode == null){
-            message = "確認退出追蹤模式？"
-        } else if (mode == 3){
-            message = "確認將車輛狀態改為安全？"
+        if (id == null) {
+            AlertDialog.Builder(this)
+                .setMessage("確認退出追蹤模式？")
+                .setCancelable(false)
+                .setPositiveButton("確認", DialogInterface.OnClickListener { dialog, id ->
+                    // 退出追蹤模式
+                    registration!!.remove()
+                    snapshot(null)
+                    mMap.clear()
+                    if (bottomSheetBehavior?.state == BottomSheetBehavior.STATE_EXPANDED) {
+                        bottomSheetBehavior?.state = BottomSheetBehavior.STATE_COLLAPSED
+                    }
+                })
+                .setNegativeButton("取消", DialogInterface.OnClickListener { dialog, id ->
+                    dialog.cancel()
+                })
+                .show()
+
+        } else if (id == 3) {
+
+            AlertDialog.Builder(this)
+                .setMessage("確認將車輛狀態改為安全？")
+                .setCancelable(false)
+                .setPositiveButton("確認", DialogInterface.OnClickListener { dialog, id ->
+                    // 更改為安全模式
+                    val docRef = db.collection("carInfo").document("$id")
+                    docRef.update("carStatus", 3)
+                })
+                .setNegativeButton("取消", DialogInterface.OnClickListener { dialog, id ->
+                    dialog.cancel()
+                })
+                .show()
         }
-        AlertDialog.Builder(this)
-            .setMessage(message)
-            .setCancelable(false)
-            .setPositiveButton("確認", DialogInterface.OnClickListener { dialog, id ->
-                // 退出追蹤模式
-                registration!!.remove()
-                snapshot(null)
-                mMap.clear()
-                if (bottomSheetBehavior?.state == BottomSheetBehavior.STATE_EXPANDED) {
-                    bottomSheetBehavior?.state = BottomSheetBehavior.STATE_COLLAPSED
-                }
-            })
-            .setNegativeButton("取消", DialogInterface.OnClickListener { dialog, id ->
-                dialog.cancel()
-            })
-            .show()
     }
 
     override fun onPause() {
@@ -432,7 +456,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             getLocationUpdates()
         }
     }
-    fun get_route(url:String):Response {
+
+    fun get_route(url: String): Response {
         val client: OkHttpClient = OkHttpClient().newBuilder()
             .build()
         val request = Request.Builder()
@@ -443,31 +468,31 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         return response
     }
 
-    fun getURL(gpsLocation: GeoPoint):String{
+    fun getURL(gpsLocation: GeoPoint): String {
         val lng = gpsLocation.let { LatLng(it.latitude, it.longitude) }
         return "https://maps.googleapis.com/maps/api/directions/json?origin=${ncu.latitude},${ncu.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
 //        return "https://maps.googleapis.com/maps/api/directions/json?origin=${lastLocation.latitude},${lastLocation.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
     }
 
-    fun draw_route(url:String){
+    fun draw_route(url: String) {
         val response = get_route(url) //根據Url呼叫get_route以得到路徑
         val data = response.peekBody(4194304)!!.string()
         val result = ArrayList<List<LatLng>>()
-        try{
-            val respObj = Gson().fromJson(data,GoogleMapDTO::class.java)
+        try {
+            val respObj = Gson().fromJson(data, GoogleMapDTO::class.java)
             val path = ArrayList<LatLng>()
 
-            for (i in 0..(respObj.routes[0].legs[0].steps.size-1)){
+            for (i in 0..(respObj.routes[0].legs[0].steps.size - 1)) {
                 path.addAll(decodePolyline(respObj.routes[0].legs[0].steps[i].polyline.points))
             }
             result.add(path)
-        }catch (e:Exception){
+        } catch (e: Exception) {
             e.printStackTrace()
         }
         val lineoption = PolylineOptions()
 
         //路徑的設定和繪製
-        for (i in result.indices){
+        for (i in result.indices) {
             lineoption.addAll(result[i])
             lineoption.width(10f)
             lineoption.color(Color.BLUE)
@@ -476,38 +501,63 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         mMap.addPolyline(lineoption)
     }
 
-    fun decodePolyline(encoded:String):List<LatLng>{
+    fun decodePolyline(encoded: String): List<LatLng> {
         val poly = ArrayList<LatLng>()
         var index = 0
         val len = encoded.length
         var lat = 0
         var lng = 0
 
-        while (index < len){
-            var b:Int
+        while (index < len) {
+            var b: Int
             var shift = 0
             var result = 0
-            do{
+            do {
                 b = encoded[index++].code - 63
                 result = result or (b and 0x1f shl shift)
                 shift += 5
-            }while (b >= 0x20)
-            val dlat = if (result and 1 !=0) (result shr 1).inv() else result shr 1
+            } while (b >= 0x20)
+            val dlat = if (result and 1 != 0) (result shr 1).inv() else result shr 1
             lat += dlat
 
             shift = 0
             result = 0
-            do{
+            do {
                 b = encoded[index++].code - 63
                 result = result or (b and 0x1f shl shift)
                 shift += 5
-            }while(b >= 0x20)
-            val dlng = if (result and 1 !=0)(result shr 1).inv() else result shr 1
+            } while (b >= 0x20)
+            val dlng = if (result and 1 != 0) (result shr 1).inv() else result shr 1
             lng += dlng
 
-            val latLng = LatLng((lat.toDouble() / 1E5),(lng.toDouble() / 1E5))
+            val latLng = LatLng((lat.toDouble() / 1E5), (lng.toDouble() / 1E5))
             poly.add(latLng)
         }
         return poly
+    }
+
+    private fun recordList(id: String) {
+
+        // 建立酒測值列表
+        val adapter = MyAdapter()
+        var recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
+        var list = mutableListOf<Record>()
+
+        // 從資料庫拿酒駕紀錄
+        db.collection("blowingRecord").whereEqualTo("carId", "${id}").get()
+            .addOnSuccessListener { documents ->
+                if (documents == null) {
+                    list.add(Record(null, null))
+                } else {
+                    for (document in documents) {
+                        list.add(document.toObject(Record::class.java))
+                    }
+
+                    // 把紀錄加進recyclerView
+                    adapter.updateList(list)
+                    recyclerView.layoutManager = LinearLayoutManager(this)
+                    recyclerView.swapAdapter(adapter, false)
+                }
+            }
     }
 }
