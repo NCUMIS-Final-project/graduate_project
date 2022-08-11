@@ -7,4 +7,5 @@
     <string name="header_time">酒測時間</string>
     <string name="button_great">狀態良好</string>
     <string name="button_exit">退出追蹤模式</string>
+    <string name="title_activity_lite_mode_map">LiteModeMapActivity</string>
 </resources>
