@@ -16,5 +16,7 @@
         android:layout_height="match_parent"
         tools:context=".MapsActivity" >
     </fragment>
+
     <include layout="@layout/layout_bottom_sheet"/>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

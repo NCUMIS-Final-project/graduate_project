@@ -19,9 +19,9 @@ package com.example.graduate_project
 
 import MyAdapter
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ContentValues.TAG
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -43,7 +43,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.graduate_project.databinding.ActivityMapsBinding
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.*
-
+import com.google.android.gms.maps.GoogleMap.*
 import com.google.android.gms.maps.model.*
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.firebase.firestore.*
@@ -52,7 +52,7 @@ import okhttp3.*
 import java.lang.Exception
 import java.util.*
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListener {
 
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
@@ -63,9 +63,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private lateinit var locationRequest: LocationRequest
     private var locationUpdateState = false
     private var db = FirebaseFirestore.getInstance()
-    var hashMapMarker: HashMap<String, Marker> = HashMap()
+    private var hashMapMarker: HashMap<String, Marker> = HashMap()
     private var registration: ListenerRegistration? = null
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<ConstraintLayout>
+    private var declinePermission: Boolean = false
 
 
     // 測試用座標
@@ -75,7 +76,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     companion object {
         private const val LOCATION_REQUEST_CODE = 1
-        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
         private const val REQUEST_CHECK_SETTINGS = 2
     }
 
@@ -88,11 +88,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         @get: PropertyName("licensePlateNum") @set: PropertyName("licensePlateNum") var licensePlateNum:
         String? = null,
         @get: PropertyName("HighSusTime") @set: PropertyName("HighSusTime") var HighSusTime: Int? = null
-    )
-
-    data class Driver(
-        @get: PropertyName("name") @set: PropertyName("name") var name: String? = "",
-        @get: PropertyName("drunken") @set: PropertyName("drunken") var drunken: Int? = null
     )
 
     data class Record(
@@ -116,56 +111,49 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
-
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-        mMap.uiSettings.isZoomControlsEnabled = true
+        with(mMap.uiSettings){
+            isZoomControlsEnabled = true
+            isScrollGesturesEnabled = true
+            isRotateGesturesEnabled = true
+        }
         mMap.setOnMarkerClickListener(this)
         setUpMap()
     }
 
-    // 確認是否有權限再設定地圖
+    @SuppressLint("MissingPermission")  // 讓編譯器可忽略"沒有要求權限"的報錯
     private fun setUpMap() {
-        // 沒定位權限：請求權限
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                LOCATION_REQUEST_CODE
-            )
-            return
-        }
 
-        // 有定位權限
-        mMap.isMyLocationEnabled = true
-        fusedLocationClient.lastLocation.addOnSuccessListener(this) { location ->
-            if (location != null) {
-                lastLocation = location
+        // 有定位權限，取得使用者位置更新
+        if (isLocationPermitted()){
+            getLocationUpdates()
+            startLocationUpdates()
+            mMap.isMyLocationEnabled = true
+            fusedLocationClient.lastLocation.addOnSuccessListener(this) { location ->
+                if (location != null) {
+                    lastLocation = location
 
-                // 測試用座標
-                val ncu = LatLng(24.9714, 121.1945)
-                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(ncu, 15f))
+                    // 測試用座標
+                    val ncu = LatLng(24.9714, 121.1945)
+                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(ncu, 15f))
 
-                //目前定位位置，實際運作用這個
+                    //目前定位位置，實際運作用這個
 //                var lastLatLng = location?.let { LatLng(it.latitude,it.longitude) }
 //                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(lastLatLng, 15f))
 
+                }
             }
+        } else {    // 沒權限，請求權限
+            askPermission()
         }
-        // 建立預設地圖(非追蹤)
+
+        // 建立預設地圖(非追蹤)，不管有沒有權限都可做
         registration?.remove()
         snapshot(null)
-
-        // 取得使用者位置、建立地圖
-        getLocationUpdates()
-        startLocationUpdates()
         setOnMarkerClickListener()
     }
 
@@ -175,13 +163,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         locationRequest.interval = 500
         locationRequest.fastestInterval = 500
         locationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-        locationCallback = object : LocationCallback() {
+        object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 if (locationResult.locations.isNotEmpty()) {
                     super.onLocationResult(locationResult)
                 }
             }
-        }
+        }.also { locationCallback = it }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -195,27 +183,20 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     }
 
     // 取得最新資訊後開始更新資料
+    @SuppressLint("MissingPermission")      // 讓編譯器可忽略"沒有要求權限"的報錯
     private fun startLocationUpdates() {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                LOCATION_PERMISSION_REQUEST_CODE
-            )
-            return
+        if (isLocationPermitted()){
+            // 權限通過
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
+        } else{
+            askPermission()
         }
-        // 權限通過
-        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
     }
 
 
     private fun snapshot(id: String?) {
-        /**     id == null >> 顯示所有marker
-                id != null >> 追蹤模式，顯示單一marker   */
+/**     id == null >> 顯示所有marker
+        id != null >> 追蹤模式，顯示單一marker   */
 
         // 先移除所有Marker
         for (marker in hashMapMarker) {
@@ -223,7 +204,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
 
         // 設定資料庫搜尋條件
-        var query = if (id == null) {
+        val query = if (id == null) {
             db.collection("carInfo").whereNotEqualTo("carId", null)
         } else {
             db.collection("carInfo").whereEqualTo("carId", "$id")
@@ -236,7 +217,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 return@addSnapshotListener
             }
             for (dc in value!!.documentChanges) {
-                var car = dc.document.toObject(MapsActivity.Car::class.java)
+                val car = dc.document.toObject(Car::class.java)
                 when (dc.type) {
                     DocumentChange.Type.ADDED -> Log.d(TAG, "New marker: ${dc.document.data}")
                     DocumentChange.Type.REMOVED -> Log.d(TAG, "Removed marker: ${dc.document.data}")
@@ -259,13 +240,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private fun setOnMarkerClickListener() {
         // 建立資訊視窗
         val bottomSheetLayout = findViewById<ConstraintLayout>(R.id.layoutBottomSheet)
-        bottomSheetBehavior = BottomSheetBehavior.from(bottomSheetLayout)
 
         // 建立酒駕紀錄視窗
         val recordListView = findViewById<View>(R.id.record_list)
         recordListView.visibility = View.GONE
 
         // 連結畫面元件
+        bottomSheetBehavior = BottomSheetBehavior.from(bottomSheetLayout)
         val license = bottomSheetLayout.findViewById<TextView>(R.id.textView)
         val sus = bottomSheetLayout.findViewById<TextView>(R.id.textView2)
         val submit = bottomSheetLayout.findViewById<View>(R.id.button2) as Button
@@ -289,27 +270,32 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 }
             }
 
-            db.collection("carInfo").document("${id}").get()
+            db.collection("carInfo").document(id).get()
                 .addOnSuccessListener { document ->
 
                     if (document != null) {
+                        // 若無定位權限 && 尚未二次拒絕權限 -> 請求權限
+                        if (!isLocationPermitted() && !declinePermission) {
+                            noLocationToRoute()
+                        }
 
-                        var car = document.toObject(MapsActivity.Car::class.java)
+                        val car = document.toObject(Car::class.java)
+
                         //合成direction api所需ㄉUrl
                         val url = car!!.gpsLocation?.let { getURL(it) }
                         //根據得到的Url繪製路線
                         if (url != null) {
-                            draw_route(url)
+                            drawRoute(url)
                         }
 
                         // 設定資訊視窗
                         license.text = car.licensePlateNum
                         sus.text = "酒駕次數為${car.HighSusTime}次"
                         // 顯示資訊視窗
-                        if (bottomSheetBehavior?.state != BottomSheetBehavior.STATE_EXPANDED) {
-                            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_EXPANDED
+                        if (bottomSheetBehavior.state != BottomSheetBehavior.STATE_EXPANDED) {
+                            bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
                         } else {
-                            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_COLLAPSED
+                            bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
                         }
                         // 進入id的追蹤畫面
                         registration!!.remove()
@@ -334,8 +320,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     }
 
     private fun resizeIcon(id: Int): Bitmap {
-        var size = 65
-        var resource = BitmapFactory.decodeResource(resources, id)
+        val size = 65
+        val resource = BitmapFactory.decodeResource(resources, id)
         return Bitmap.createScaledBitmap(resource, size, size, false)
     }
 
@@ -356,7 +342,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     .position(lng)
                     .title(car.carId)
                     .icon(BitmapDescriptorFactory.fromBitmap(icon))
-//                    .icon(BitmapDescriptorFactory.fromResource(icon))
             ).also { marker = it }
             hashMapMarker[car.carId!!] = marker
         }
@@ -381,8 +366,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             //車輛狀態改為疑似酒駕
             if (car.carStatus == 1) {
                 if (marker != null) {
-                    marker?.isVisible = true
-                    marker?.setIcon(BitmapDescriptorFactory.fromBitmap(resizeIcon(R.drawable.marker1)))
+                    marker.isVisible = true
+                    marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeIcon(R.drawable.marker1)))
                 } else {
                     placeMarkerOnMap(car)
                 }
@@ -391,8 +376,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             //車輛狀態改為高度疑似酒駕
             if (car.carStatus == 2) {
                 if (marker != null) {
-                    marker?.isVisible = true
-                    marker?.setIcon(BitmapDescriptorFactory.fromBitmap(resizeIcon(R.drawable.marker2)))
+                    marker.isVisible = true
+                    marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeIcon(R.drawable.marker2)))
                 } else {
                     placeMarkerOnMap(car)
                 }
@@ -400,12 +385,25 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             //車輛更改座標
             if (marker?.position != lng) {
                 marker?.position = lng
-                Log.d("fixed", "${hashMapMarker[car.carId]}")
             }
         }
     }
 
     override fun onMarkerClick(p0: Marker?) = false
+
+    // 要導航時發現沒定位權限ㄉ權限請求訊息
+    private fun noLocationToRoute(){
+        AlertDialog.Builder(this)
+            .setMessage("需取得定位權限才能使用導航服務")
+            .setCancelable(false)
+            .setPositiveButton("取得導航功能") { _, _ ->
+                askPermission()
+            }.setNegativeButton("無須導航功能") { dialog, _ ->
+                dialog.cancel()
+                Toast.makeText(this,"無定位權限，您將在無導航模式使用Alcoholert",Toast.LENGTH_LONG).show()
+                declinePermission = true
+            }.show()
+    }
 
     private fun confirmDialog(id: Int?) {
         // mode == null >> "退出追蹤模式"的訊息
@@ -414,18 +412,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             AlertDialog.Builder(this)
                 .setMessage("確認退出追蹤模式？")
                 .setCancelable(false)
-                .setPositiveButton("確認", DialogInterface.OnClickListener { dialog, id ->
+                .setPositiveButton("確認") { _, _ ->
                     // 退出追蹤模式
                     registration!!.remove()
                     snapshot(null)
                     mMap.clear()
-                    if (bottomSheetBehavior?.state == BottomSheetBehavior.STATE_EXPANDED) {
-                        bottomSheetBehavior?.state = BottomSheetBehavior.STATE_COLLAPSED
+                    if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED) {
+                        bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
                     }
-                })
-                .setNegativeButton("取消", DialogInterface.OnClickListener { dialog, id ->
+                }
+                .setNegativeButton("取消") { dialog, _ ->
                     dialog.cancel()
-                })
+                }
                 .show()
 
         } else if (id == 3) {
@@ -433,14 +431,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             AlertDialog.Builder(this)
                 .setMessage("確認將車輛狀態改為安全？")
                 .setCancelable(false)
-                .setPositiveButton("確認", DialogInterface.OnClickListener { dialog, id ->
+                .setPositiveButton("確認") { _, id ->
                     // 更改為安全模式
                     val docRef = db.collection("carInfo").document("$id")
                     docRef.update("carStatus", 3)
-                })
-                .setNegativeButton("取消", DialogInterface.OnClickListener { dialog, id ->
+                }
+                .setNegativeButton("取消") { dialog, _ ->
                     dialog.cancel()
-                })
+                }
                 .show()
         }
     }
@@ -457,51 +455,53 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
     }
 
-    fun get_route(url: String): Response {
+    private fun getRoute(url: String): Response {
         val client: OkHttpClient = OkHttpClient().newBuilder()
             .build()
         val request = Request.Builder()
             .url(url)
             .get()
             .build()
-        val response: Response = client.newCall(request).execute()
-        return response
+        return client.newCall(request).execute()
     }
 
-    fun getURL(gpsLocation: GeoPoint): String {
+    // 多加了「如果沒有使用者位置會回傳null」
+    private fun getURL(gpsLocation: GeoPoint): String? {
         val lng = gpsLocation.let { LatLng(it.latitude, it.longitude) }
-        return "https://maps.googleapis.com/maps/api/directions/json?origin=${ncu.latitude},${ncu.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
-//        return "https://maps.googleapis.com/maps/api/directions/json?origin=${lastLocation.latitude},${lastLocation.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
+        return if (isLocationPermitted()){
+            "https://maps.googleapis.com/maps/api/directions/json?origin=${ncu.latitude},${ncu.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
+            // return "https://maps.googleapis.com/maps/api/directions/json?origin=${lastLocation.latitude},${lastLocation.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
+        } else null
     }
 
-    fun draw_route(url: String) {
-        val response = get_route(url) //根據Url呼叫get_route以得到路徑
-        val data = response.peekBody(4194304)!!.string()
+    private fun drawRoute(url: String) {
+        val response = getRoute(url) //根據Url呼叫get_route以得到路徑
+        val data = response.peekBody(4194304).string()
         val result = ArrayList<List<LatLng>>()
         try {
             val respObj = Gson().fromJson(data, GoogleMapDTO::class.java)
             val path = ArrayList<LatLng>()
 
-            for (i in 0..(respObj.routes[0].legs[0].steps.size - 1)) {
+            for (i in 0 until respObj.routes[0].legs[0].steps.size) {
                 path.addAll(decodePolyline(respObj.routes[0].legs[0].steps[i].polyline.points))
             }
             result.add(path)
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        val lineoption = PolylineOptions()
+        val lineOption = PolylineOptions()
 
         //路徑的設定和繪製
         for (i in result.indices) {
-            lineoption.addAll(result[i])
-            lineoption.width(10f)
-            lineoption.color(Color.BLUE)
-            lineoption.geodesic(true)
+            lineOption.addAll(result[i])
+            lineOption.width(10f)
+            lineOption.color(Color.BLUE)
+            lineOption.geodesic(true)
         }
-        mMap.addPolyline(lineoption)
+        mMap.addPolyline(lineOption)
     }
 
-    fun decodePolyline(encoded: String): List<LatLng> {
+    private fun decodePolyline(encoded: String): List<LatLng> {
         val poly = ArrayList<LatLng>()
         var index = 0
         val len = encoded.length
@@ -540,11 +540,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
         // 建立酒測值列表
         val adapter = MyAdapter()
-        var recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
-        var list = mutableListOf<Record>()
+        val recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
+        val list = mutableListOf<Record>()
 
         // 從資料庫拿酒駕紀錄
-        db.collection("blowingRecord").whereEqualTo("carId", "${id}").get()
+        db.collection("blowingRecord").whereEqualTo("carId", id).get()
             .addOnSuccessListener { documents ->
                 if (documents == null) {
                     list.add(Record(null, null))
@@ -559,5 +559,41 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     recyclerView.swapAdapter(adapter, false)
                 }
             }
+    }
+
+    // 請求權限
+    private fun askPermission() {
+        if (!isLocationPermitted()) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_REQUEST_CODE
+            )
+        }
+    }
+
+    // 根據權限請求結果來決定後續動作
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (isLocationPermitted()){
+            // 重新進入MapActivity
+            val intent = Intent(this, MapsActivity::class.java)
+            startActivity(intent)
+        } else {
+            Toast.makeText(this, "無法取得定位位置",Toast.LENGTH_LONG).show()
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(ncu, 15f))
+        }
+    }
+
+    // 回傳是否有定位權限
+    private fun isLocationPermitted(): Boolean{
+        return ActivityCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
     }
 }
