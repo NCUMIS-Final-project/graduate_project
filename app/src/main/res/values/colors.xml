@@ -13,4 +13,8 @@
     <color name="dark_blue">#2D3142</color>
     <color name="light_blue">#4F5D75</color>
     <color name="purple">#635068</color>
+    <color name="background_1">#283048</color>
+    <color name="background_2">#859398</color>
+    <color name="bk_3">#cfd9df</color>
+    <color name="bk_4">#e2ebf0</color>
 </resources>

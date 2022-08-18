@@ -320,7 +320,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
     }
 
     private fun resizeIcon(id: Int): Bitmap {
-        val size = 65
+        val size = 120
         val resource = BitmapFactory.decodeResource(resources, id)
         return Bitmap.createScaledBitmap(resource, size, size, false)
     }
@@ -329,9 +329,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
     private fun placeMarkerOnMap(car: Car) {
         var icon = resizeIcon(R.drawable.button)
         if (car.carStatus == 1) {
-            icon = resizeIcon(R.drawable.marker1)
+            icon = resizeIcon(R.drawable.car1_shadow)
         } else if (car.carStatus == 2) {
-            icon = resizeIcon(R.drawable.marker2)
+            icon = resizeIcon(R.drawable.car2_shadow)
         }
 
         //若車輛狀態不為良好
@@ -367,7 +367,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
             if (car.carStatus == 1) {
                 if (marker != null) {
                     marker.isVisible = true
-                    marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeIcon(R.drawable.marker1)))
+                    marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeIcon(R.drawable.car1_shadow)))
                 } else {
                     placeMarkerOnMap(car)
                 }
@@ -377,7 +377,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
             if (car.carStatus == 2) {
                 if (marker != null) {
                     marker.isVisible = true
-                    marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeIcon(R.drawable.marker2)))
+                    marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeIcon(R.drawable.car2_shadow)))
                 } else {
                     placeMarkerOnMap(car)
                 }

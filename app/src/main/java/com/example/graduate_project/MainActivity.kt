@@ -30,9 +30,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        /** 略過登入，直接跳轉到地圖*/
-        val intent = Intent(this, MapsActivity::class.java)
-        startActivity(intent)
+//        /** 略過登入，直接跳轉到地圖*/
+//        val intent = Intent(this, MapsActivity::class.java)
+//        startActivity(intent)
 
         var user_account: TextView = findViewById<TextView>(R.id.et2)
         var user_password: TextView = findViewById<TextView>(R.id.et3)

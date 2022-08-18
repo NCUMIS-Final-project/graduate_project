@@ -36,8 +36,14 @@
         <item name="android:shadowRadius">3</item>
     </style>
 
-    <style name="graduate_shadow">
-
+    <style name="graduate_editText">
+        <item name="android:textColor">@color/dark_blue</item>
+        <item name="android:layout_margin">10dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:ems">10</item>
+        <item name="android:inputType">textVisiblePassword</item>
+        <item name="singleLine">true</item>
+        <item name="android:textColorHint">@color/gray</item>
     </style>
 
     <style name="graduate_topic2" parent="graduate_topic">

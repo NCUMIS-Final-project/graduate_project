@@ -4,71 +4,78 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/background_full"
     tools:context=".MainActivity">
 
-
+<!--    <ImageView-->
+<!--        android:layout_width="415dp"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:src="@drawable/background_front1"-->
+<!--        tools:ignore="MissingConstraints" />-->
 
     <LinearLayout
+        android:id="@+id/login"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:gravity="center_horizontal"
         android:orientation="vertical"
         tools:ignore="MissingConstraints">
-
-        <ImageView
+        <Space
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:scaleType="centerCrop"
-            android:adjustViewBounds="true"
-            android:layout_weight="0"
-            android:src="@drawable/login_page3"/>
+            android:layout_height="320dp"
+            tools:ignore="MissingConstraints" />
+        <!--        <ImageView-->
+        <!--            android:layout_width="match_parent"-->
+        <!--            android:layout_height="wrap_content"-->
+        <!--            android:scaleType="centerCrop"-->
+        <!--            android:adjustViewBounds="true"-->
+        <!--            android:layout_weight="0"-->
+        <!--            android:src="@drawable/login_page3"/>-->
 
-
-        <TextView
-            android:id="@+id/welcome_message"
-            style="@style/graduate_topic"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Welcome 歡迎" />
-<!--        <Space-->
-<!--            android:layout_width="match_parent"-->
-<!--            android:layout_height="125dp"-->
-<!--            tools:ignore="MissingConstraints" />-->
+        <!--        <TextView-->
+        <!--            android:id="@+id/welcome_message"-->
+        <!--            style="@style/graduate_topic"-->
+        <!--            android:layout_width="match_parent"-->
+        <!--            android:layout_height="wrap_content"-->
+        <!--            android:text="Welcome 歡迎" />-->
+        <!--        <Space-->
+        <!--            android:layout_width="match_parent"-->
+        <!--            android:layout_height="125dp"-->
+        <!--            tools:ignore="MissingConstraints" />-->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_margin="5dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <ImageView
                 android:id="@+id/Textview2"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:layout_weight="1"
                 android:gravity="center_horizontal"
-                android:src="@drawable/account"/>
+                android:src="@drawable/account" />
 
             <EditText
                 android:id="@+id/et2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_margin="10dp"
                 android:hint="account"
-                android:ems="10"
-                android:inputType="textVisiblePassword" />
+                style="@style/graduate_editText"/>
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_margin="5dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <ImageView
                 android:id="@+id/textView3"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:layout_weight="1"
                 android:gravity="center_horizontal"
                 android:src="@drawable/password" />
@@ -77,26 +84,24 @@
                 android:id="@+id/et3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_margin="10dp"
                 android:hint="password"
-                android:ems="10"
-                android:inputType="textPassword" />
+                style="@style/graduate_editText"/>
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="100dp"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:layout_margin="20dp"
             android:orientation="horizontal">
 
             <Button
                 android:id="@+id/button"
+                style="@style/graduate_btn"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Login"
                 android:layout_weight="1"
-                style="@style/graduate_btn" />
+                android:text="Login" />
 
         </LinearLayout>
     </LinearLayout>
