@@ -4,44 +4,32 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/background_full"
+    android:background="@drawable/background_back"
     tools:context=".MainActivity">
 
-<!--    <ImageView-->
-<!--        android:layout_width="415dp"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:src="@drawable/background_front1"-->
-<!--        tools:ignore="MissingConstraints" />-->
+    <ImageView
+        android:id="@+id/background_top"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:src="@drawable/background_front1"
+        android:adjustViewBounds="true"
+        app:layout_constraintBottom_toTopOf="@id/login"
+        tools:ignore="MissingConstraints"/>
 
     <LinearLayout
         android:id="@+id/login"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="450dp"
+        app:layout_constraintBottom_toBottomOf="parent"
         android:gravity="center_horizontal"
         android:orientation="vertical"
+        android:background="@color/white"
         tools:ignore="MissingConstraints">
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="320dp"
-            tools:ignore="MissingConstraints" />
-        <!--        <ImageView-->
-        <!--            android:layout_width="match_parent"-->
-        <!--            android:layout_height="wrap_content"-->
-        <!--            android:scaleType="centerCrop"-->
-        <!--            android:adjustViewBounds="true"-->
-        <!--            android:layout_weight="0"-->
-        <!--            android:src="@drawable/login_page3"/>-->
+<!--        <Space-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="320dp"-->
+<!--            tools:ignore="MissingConstraints" />-->
 
-        <!--        <TextView-->
-        <!--            android:id="@+id/welcome_message"-->
-        <!--            style="@style/graduate_topic"-->
-        <!--            android:layout_width="match_parent"-->
-        <!--            android:layout_height="wrap_content"-->
-        <!--            android:text="Welcome 歡迎" />-->
-        <!--        <Space-->
-        <!--            android:layout_width="match_parent"-->
-        <!--            android:layout_height="125dp"-->
-        <!--            tools:ignore="MissingConstraints" />-->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
