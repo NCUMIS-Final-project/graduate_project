@@ -67,6 +67,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
     private var registration: ListenerRegistration? = null
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<ConstraintLayout>
     private var declinePermission: Boolean = false
+    private lateinit var icon1: Bitmap
+    private lateinit var icon2: Bitmap
+    private var recordCount = 0
 
 
     // 測試用座標
@@ -150,6 +153,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
         } else {    // 沒權限，請求權限
             askPermission()
         }
+
+        // 建立 marker icon
+        icon1 = resizeIcon(R.drawable.location_pin_y)
+        icon2 = resizeIcon(R.drawable.location_pin_r)
 
         // 建立預設地圖(非追蹤)，不管有沒有權限都可做
         registration?.remove()
@@ -252,7 +259,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
         val submit = bottomSheetLayout.findViewById<View>(R.id.button2) as Button
         val submit2 = bottomSheetLayout.findViewById<View>(R.id.button3) as Button
 
-        mMap.clear()
         mMap.setOnMarkerClickListener { marker ->
 
             val id = marker.title
@@ -260,6 +266,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
 
             val openList =
                 bottomSheetLayout.findViewById<View>(R.id.openListBtn) as ImageButton
+            // 初始設定為收起狀態
+            recordListView.visibility = View.GONE
+            openList.setImageResource(R.drawable.up_arrow)
+
             openList.setOnClickListener {
                 if (recordListView.visibility == View.VISIBLE) {
                     recordListView.visibility = View.GONE
@@ -290,7 +300,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
 
                         // 設定資訊視窗
                         license.text = car.licensePlateNum
-                        sus.text = "酒駕次數為${car.HighSusTime}次"
+                        sus.text = "酒駕次數為${recordCount}次"
                         // 顯示資訊視窗
                         if (bottomSheetBehavior.state != BottomSheetBehavior.STATE_EXPANDED) {
                             bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
@@ -320,18 +330,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
     }
 
     private fun resizeIcon(id: Int): Bitmap {
-        val size = 120
+        val size = 150
         val resource = BitmapFactory.decodeResource(resources, id)
         return Bitmap.createScaledBitmap(resource, size, size, false)
     }
 
     // 放置 marker
     private fun placeMarkerOnMap(car: Car) {
-        var icon = resizeIcon(R.drawable.button)
-        if (car.carStatus == 1) {
-            icon = resizeIcon(R.drawable.car1_shadow)
-        } else if (car.carStatus == 2) {
-            icon = resizeIcon(R.drawable.car2_shadow)
+
+        // 依 carStatus 設定 marker icon
+        var thisIcon = icon1
+        if (car.carStatus == 2){
+            thisIcon = icon2
         }
 
         //若車輛狀態不為良好
@@ -341,7 +351,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
                 MarkerOptions()
                     .position(lng)
                     .title(car.carId)
-                    .icon(BitmapDescriptorFactory.fromBitmap(icon))
+                    .icon(BitmapDescriptorFactory.fromBitmap(thisIcon))
             ).also { marker = it }
             hashMapMarker[car.carId!!] = marker
         }
@@ -367,7 +377,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
             if (car.carStatus == 1) {
                 if (marker != null) {
                     marker.isVisible = true
-                    marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeIcon(R.drawable.car1_shadow)))
+                    marker.setIcon(BitmapDescriptorFactory.fromBitmap(icon1))
                 } else {
                     placeMarkerOnMap(car)
                 }
@@ -377,7 +387,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
             if (car.carStatus == 2) {
                 if (marker != null) {
                     marker.isVisible = true
-                    marker.setIcon(BitmapDescriptorFactory.fromBitmap(resizeIcon(R.drawable.car2_shadow)))
+                    marker.setIcon(BitmapDescriptorFactory.fromBitmap(icon2))
                 } else {
                     placeMarkerOnMap(car)
                 }
@@ -475,6 +485,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
     }
 
     private fun drawRoute(url: String) {
+        mMap.clear()
         val response = getRoute(url) //根據Url呼叫get_route以得到路徑
         val data = response.peekBody(4194304).string()
         val result = ArrayList<List<LatLng>>()
@@ -495,7 +506,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
         for (i in result.indices) {
             lineOption.addAll(result[i])
             lineOption.width(10f)
-            lineOption.color(Color.BLUE)
+            lineOption.color(Color.RED)
             lineOption.geodesic(true)
         }
         mMap.addPolyline(lineOption)
@@ -558,6 +569,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
                     recyclerView.layoutManager = LinearLayoutManager(this)
                     recyclerView.swapAdapter(adapter, false)
                 }
+                recordCount = list.count()
             }
     }
 

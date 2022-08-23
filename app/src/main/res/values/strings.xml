@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Graduate_project</string>
+    <string name="app_name">AlcohoLert</string>
     <string name="title_activity_maps">MapsActivity</string>
     <string name="default_plateNum">查無此車牌</string>
     <string name="default_records">無酒駕紀錄</string>

@@ -18,4 +18,6 @@
     <color name="bk_3">#cfd9df</color>
     <color name="bk_4">#e2ebf0</color>
     <color name="transparent">#00000000</color>
+    <color name="red">#E62420</color>
+    <color name="yellow">#FFBA00</color>
 </resources>

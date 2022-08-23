@@ -5,8 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MapsActivity"
-    app:layout_behavior="@string/appbar_scrolling_view_behavior">
+    tools:context=".MapsActivity">
 
     <fragment xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:tools="http://schemas.android.com/tools"
@@ -16,7 +15,11 @@
         android:layout_height="match_parent"
         tools:context=".MapsActivity" >
     </fragment>
+    <include
+        layout="@layout/legend_area"/>
 
-    <include layout="@layout/layout_bottom_sheet"/>
-
+    <include
+        layout="@layout/layout_bottom_sheet"
+        tools:layout_editor_absoluteX="38dp"
+        tools:layout_editor_absoluteY="0dp" />
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -33,11 +33,11 @@
                 <ImageButton
                     android:id="@+id/openListBtn"
                     android:layout_width="wrap_content"
-                    android:layout_height="50dp"
+                    android:layout_height="40dp"
                     android:backgroundTint="@color/white"
                     android:contentDescription="show/hide detail"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/up_arrow" />
+                    android:src="@drawable/up_arrow"/>
 
                 <TextView
                     android:id="@+id/textView"
@@ -81,7 +81,7 @@
 
                     <ScrollView
                         android:layout_width="match_parent"
-                        android:layout_height="60dp"
+                        android:layout_height="wrap_content"
                         tools:ignore="MissingConstraints">
 
                         <androidx.recyclerview.widget.RecyclerView
