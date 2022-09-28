@@ -22,6 +22,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ContentValues.TAG
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -155,8 +156,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
         }
 
         // 建立 marker icon
-        icon1 = resizeIcon(R.drawable.location_pin_y)
-        icon2 = resizeIcon(R.drawable.location_pin_r)
+        icon1 = resizeIcon(R.drawable.map_placeholder_y)
+        icon2 = resizeIcon(R.drawable.map_placeholder_r)
 
         // 建立預設地圖(非追蹤)，不管有沒有權限都可做
         registration?.remove()
@@ -311,11 +312,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
                         registration!!.remove()
                         snapshot(id)
                         submit.setOnClickListener {
-                            confirmDialog(null)
+                            confirmDialog(id, null)
                         }
 
                         submit2.setOnClickListener {
-                            confirmDialog(3)
+                            confirmDialog(id, 3)
                         }
 
                     } else {
@@ -415,10 +416,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
             }.show()
     }
 
-    private fun confirmDialog(id: Int?) {
+    private fun confirmDialog(id: String, mode: Int?) {
         // mode == null >> "退出追蹤模式"的訊息
         // mode == 3    >> "狀態改為安全"的訊息
-        if (id == null) {
+        if (mode == null) {
             AlertDialog.Builder(this)
                 .setMessage("確認退出追蹤模式？")
                 .setCancelable(false)
@@ -436,15 +437,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
                 }
                 .show()
 
-        } else if (id == 3) {
+        } else if (mode == 3) {
 
             AlertDialog.Builder(this)
                 .setMessage("確認將車輛狀態改為安全？")
                 .setCancelable(false)
-                .setPositiveButton("確認") { _, id ->
+                .setPositiveButton("確認") { _, _ ->
                     // 更改為安全模式
                     val docRef = db.collection("carInfo").document("$id")
                     docRef.update("carStatus", 3)
+                    registration!!.remove()
+                    snapshot(null)
+                    mMap.clear()
+                    if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED) {
+                        bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+                    }
                 }
                 .setNegativeButton("取消") { dialog, _ ->
                     dialog.cancel()
@@ -479,8 +486,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, OnMarkerClickListe
     private fun getURL(gpsLocation: GeoPoint): String? {
         val lng = gpsLocation.let { LatLng(it.latitude, it.longitude) }
         return if (isLocationPermitted()){
-            "https://maps.googleapis.com/maps/api/directions/json?origin=${ncu.latitude},${ncu.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
-            // return "https://maps.googleapis.com/maps/api/directions/json?origin=${lastLocation.latitude},${lastLocation.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
+//            "https://maps.googleapis.com/maps/api/directions/json?origin=${ncu.latitude},${ncu.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
+             return "https://maps.googleapis.com/maps/api/directions/json?origin=${lastLocation.latitude},${lastLocation.longitude}&destination=${lng.latitude},${lng.longitude}&key=AIzaSyBe9JNJ-kiMleUTqKnQ8ATEsrp2q0_3pr8"
         } else null
     }
 

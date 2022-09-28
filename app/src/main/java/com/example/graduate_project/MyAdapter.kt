@@ -1,5 +1,6 @@
 
 
+import android.icu.text.DecimalFormat
 import android.icu.text.SimpleDateFormat
 import android.os.Build
 import android.view.LayoutInflater
@@ -27,9 +28,10 @@ class MyAdapter() :
         @RequiresApi(Build.VERSION_CODES.N)
         fun bind(record: MapsActivity.Record) {
             currentRecord = record
-            val date = SimpleDateFormat("yyyy/ M/ d").format(record.time)
-            TextView1.text = record.value.toString()
-            TextView2.text = date.toString()
+//            val date = SimpleDateFormat("yyyy/ M/ d").format(record.time)
+//            TextView1.text = DecimalFormat("#.##").format(record.value)
+            TextView1.text = String.format("%.2f",record.value)
+            TextView2.text = SimpleDateFormat("yyyy/MM/dd").format(record.time)
         }
     }
 
